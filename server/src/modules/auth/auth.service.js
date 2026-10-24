@@ -20,6 +20,9 @@ export async function verifyCredentials(email, password) {
   if (!valid) return null;
 
   const { passwordHash: _, ...safeUser } = user;
+  if (!safeUser.hotelId && safeUser.stays?.[0]?.room?.hotelId) {
+    safeUser.hotelId = safeUser.stays[0].room.hotelId;
+  }
   return safeUser;
 }
 
@@ -38,5 +41,8 @@ export async function getUserById(id) {
   });
   if (!user) return null;
   const { passwordHash: _, ...safeUser } = user;
+  if (!safeUser.hotelId && safeUser.stays?.[0]?.room?.hotelId) {
+    safeUser.hotelId = safeUser.stays[0].room.hotelId;
+  }
   return safeUser;
 }

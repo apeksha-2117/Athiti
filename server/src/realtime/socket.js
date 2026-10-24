@@ -53,58 +53,72 @@ export function initSocketIO(io, sessionMiddleware) {
   });
 
   io.on('connection', async (socket) => {
-    const { id, role, email } = socket.user;
-    let hotelId = socket.user.hotelId;
+    try {
+      const { id, role, email } = socket.user || {};
+      if (!id) return;
 
-    if (!hotelId && role === 'GUEST') {
-      const activeStay = await prisma.stay.findFirst({
-        where: { guestId: id, status: 'ACTIVE' },
-        include: { room: true },
-      });
-      if (activeStay?.room?.hotelId) {
-        hotelId = activeStay.room.hotelId;
+      let hotelId = socket.user.hotelId || socket.user.stays?.[0]?.room?.hotelId;
+
+      if (!hotelId && role === 'GUEST') {
+        try {
+          const activeStay = await prisma.stay.findFirst({
+            where: { guestId: id, status: 'ACTIVE' },
+            include: { room: true },
+          });
+          if (activeStay?.room?.hotelId) {
+            hotelId = activeStay.room.hotelId;
+          }
+        } catch (dbErr) {
+          console.warn('[SOCKET_WARN] Stay lookup non-fatal error:', dbErr.message);
+        }
       }
-    }
 
-    if (hotelId) {
-      socket.join(`hotel:${hotelId}`);
-    }
-    socket.join(`role:${role}`);
-    socket.join(`user:${id}`);
+      if (hotelId) {
+        socket.join(`hotel:${hotelId}`);
+      }
+      socket.join(`role:${role}`);
+      socket.join(`user:${id}`);
 
-    // If staff user, seed default sector if not yet set
-    if (role === 'STAFF' && !staffLivePositions[id] && email && DEFAULT_STAFF_SECTORS[email]) {
-      staffLivePositions[id] = {
-        staffId: id,
-        email,
-        name: socket.user.name,
-        ...DEFAULT_STAFF_SECTORS[email],
-        updatedAt: new Date().toISOString(),
-      };
-    }
-
-    // Send current staff positions to newly connected admin or staff
-    socket.emit('staff:positions', staffLivePositions);
-
-    // Listen for real-time staff location change
-    socket.on('staff:update_location', (data) => {
-      if (role === 'STAFF') {
-        const updated = setStaffPosition(id, {
+      // If staff user, seed default sector if not yet set
+      if (role === 'STAFF' && !staffLivePositions[id] && email && DEFAULT_STAFF_SECTORS[email]) {
+        staffLivePositions[id] = {
           staffId: id,
           email,
           name: socket.user.name,
-          ...data,
-        });
-        if (hotelId) {
-          io.to(`hotel:${hotelId}`).emit('staff:positions', staffLivePositions);
-        } else {
-          io.emit('staff:positions', staffLivePositions);
-        }
+          ...DEFAULT_STAFF_SECTORS[email],
+          updatedAt: new Date().toISOString(),
+        };
       }
-    });
 
-    socket.on('disconnect', () => {
-      // cleanup handled automatically by Socket.IO
-    });
+      // Send current staff positions to newly connected admin or staff
+      socket.emit('staff:positions', staffLivePositions);
+
+      // Listen for real-time staff location change
+      socket.on('staff:update_location', (data) => {
+        try {
+          if (role === 'STAFF') {
+            const updated = setStaffPosition(id, {
+              staffId: id,
+              email,
+              name: socket.user.name,
+              ...data,
+            });
+            if (hotelId) {
+              io.to(`hotel:${hotelId}`).emit('staff:positions', staffLivePositions);
+            } else {
+              io.emit('staff:positions', staffLivePositions);
+            }
+          }
+        } catch (err) {
+          console.error('[SOCKET_ERROR] staff:update_location error:', err.message);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        // cleanup handled automatically by Socket.IO
+      });
+    } catch (err) {
+      console.error('[SOCKET_CONNECTION_ERROR]', err.message);
+    }
   });
 }
