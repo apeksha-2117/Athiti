@@ -26,6 +26,7 @@ export function AdminPortal() {
   const [assignLoading, setAssignLoading] = useState(false);
 
   const [closeModal, setCloseModal] = useState(null);
+  const [closeLoading, setCloseLoading] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
   const [externalContacted, setExternalContacted] = useState(false);
   const [externalDetails, setExternalDetails] = useState('');
@@ -196,16 +197,27 @@ export function AdminPortal() {
   };
 
   const submitClose = async () => {
-    if (!resolutionNote.trim()) return;
+    if (!resolutionNote.trim() || closeLoading) return;
+    setCloseLoading(true);
     try {
+      const payload = {
+        resolutionNote: resolutionNote.trim(),
+        externalServiceContacted: Boolean(externalContacted),
+      };
+      if (externalContacted && externalDetails.trim()) {
+        payload.externalServiceDetails = { notes: externalDetails.trim() };
+      }
+
       await apiFetch(`/admin/incidents/${closeModal.id}/close`, {
         method: 'POST',
-        body: JSON.stringify({
-          resolutionNote,
-          externalServiceContacted: externalContacted,
-          externalServiceDetails: externalDetails ? { notes: externalDetails } : null,
-        }),
+        body: JSON.stringify(payload),
       });
+
+      // Optimistic state update
+      setIncidents((prev) =>
+        prev.map((inc) => (inc.id === closeModal.id ? { ...inc, status: 'CLOSED', resolutionNote } : inc))
+      );
+
       setCloseModal(null);
       setResolutionNote('');
       setExternalContacted(false);
@@ -213,6 +225,8 @@ export function AdminPortal() {
       loadData();
     } catch (err) {
       alert(err.message || 'Failed to close incident');
+    } finally {
+      setCloseLoading(false);
     }
   };
 
@@ -1135,13 +1149,19 @@ export function AdminPortal() {
             )}
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button className="btn btn-secondary" onClick={() => setCloseModal(null)}>Cancel</button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setCloseModal(null)}
+                disabled={closeLoading}
+              >
+                Cancel
+              </button>
               <button
                 className="btn btn-primary"
                 onClick={submitClose}
-                disabled={!resolutionNote.trim()}
+                disabled={!resolutionNote.trim() || closeLoading}
               >
-                Confirm Closure
+                {closeLoading ? 'Closing...' : 'Confirm Closure'}
               </button>
             </div>
           </div>

@@ -260,6 +260,13 @@ export async function escalateIncident(incidentId, adminId, reason) {
 }
 
 export async function closeIncident(incidentId, adminId, { resolutionNote, externalServiceContacted, externalServiceDetails }) {
+  let detailsJson = null;
+  if (externalServiceDetails) {
+    detailsJson = typeof externalServiceDetails === 'string'
+      ? { notes: externalServiceDetails }
+      : externalServiceDetails;
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     const inc = await tx.incident.update({
       where: { id: incidentId },
@@ -267,7 +274,7 @@ export async function closeIncident(incidentId, adminId, { resolutionNote, exter
         status: 'CLOSED',
         resolutionNote,
         externalServiceContacted: !!externalServiceContacted,
-        externalServiceDetails: externalServiceDetails || null,
+        externalServiceDetails: detailsJson,
         closedAt: new Date(),
         resolvedAt: new Date(),
       },

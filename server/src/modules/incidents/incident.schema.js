@@ -59,7 +59,7 @@ export const escalateIncidentSchema = z.object({
 export const closeIncidentSchema = z.object({
   resolutionNote: z.string().min(1, 'Resolution note is required'),
   externalServiceContacted: z.boolean().optional(),
-  externalServiceDetails: z.record(z.any()).optional(),
+  externalServiceDetails: z.union([z.record(z.any()), z.string(), z.null()]).optional(),
 });
 
 export const addEventSchema = z.object({
