@@ -142,9 +142,19 @@
 
 ---
 
-## Phase 6 — Polish & Demo
+## Phase 6 — Polish, Deployment & Live Verification
 
-### Quality
+### Deployment & Cloud Infrastructure
+- ✅ Database: Render PostgreSQL (`dpg-dbe2tkom7kps73c5dv90-a.singapore-postgres.render.com`)
+- ✅ Backend: Render Web Service (`https://athiti.onrender.com`)
+- ✅ Frontend: Vercel SPA (`https://athithi-client.vercel.app`)
+- ✅ Cross-domain credentialed CORS & dynamic origin reflection
+- ✅ Express session configured with PostgreSQL SSL pool (`rejectUnauthorized: false`)
+- ✅ Cookie settings: `Secure; SameSite=None; proxy: true`
+- ✅ Frontend production fallback: automatically routes to `https://athiti.onrender.com` in production mode
+- ✅ Live verification: 200 OK verified on Render production across all admin endpoints & Socket.IO auth
+
+### Quality & Presentation
 - ✅ **impeccable design system** — custom hospitality dark tokens, clean typography, accessible contrast
 - ✅ Responsive layouts across mobile & desktop
 - ✅ 1-Tap Demo Switcher on Login Page for fast presentations
