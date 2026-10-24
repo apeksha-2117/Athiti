@@ -130,10 +130,18 @@
 - ✅ `GET /api/admin/rooms/:id` — room detail
 - ✅ `POST /api/public/reports` — public report (rate-limited, validated)
 
-### Frontend — Admin Room Overview
-- ✅ **impeccable** Hotel floor plan grid (Floors 1, 2, 3)
-- ✅ Room card — operational status, active incident markers, active guest stay
-- ✅ Room detail modal — stay info, unknown physical presence disclaimer
+### Frontend — Interactive Hotel Floor Plan (Blueprint CAD View)
+- ✅ **impeccable architectural SVG 2D floor plan** — technical millimeter grid, double walls, door swing arcs, windows, stairwells, and elevator core
+- ✅ Multi-floor selector (Floor 1 Ground/Lobby, Floor 2 Lounge, Floor 3 Suites) with live emergency counter badges
+- ✅ Interactive room selection: visual highlight, room type, occupancy state, registered guest stay details
+- ✅ Physical presence safety disclaimer callout per PRD FR-029
+- ✅ Real-time incident & service markers with animated radar pulse for critical emergencies
+- ✅ Marker clustering & non-overlapping badge stacks when multiple reports exist in a single room
+- ✅ Interactive Inspector panel with direct dispatch, escalate, and closure actions
+- ✅ Marker filters: All Reports, Emergencies Only, Routine Services Only
+- ✅ Dedicated Unlocated Reports shelf for bystander public reports and unmapped incidents
+- ✅ Zoom in / Zoom out / Scale Reset controls
+- ✅ Seamless toggle between CAD Blueprint View and Room Cards Grid
 
 ### Frontend — Public Reporting
 - ✅ **impeccable** Public report page (no login required)
