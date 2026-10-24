@@ -52,6 +52,7 @@ export function createApp() {
       callback(null, true);
     },
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   };
   app.use(cors(corsOptions));
 

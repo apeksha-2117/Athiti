@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getSocket } from '../../realtime/socket';
 
 export function AdminPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('INCIDENTS'); // 'INCIDENTS' | 'ROOMS' | 'SERVICES' | 'PUBLIC_REPORTS' | 'AUDIT_LOGS'
 
   const [incidents, setIncidents] = useState([]);
@@ -64,6 +64,9 @@ export function AdminPortal() {
       setAuditLogs(auditData.logs || []);
     } catch (err) {
       console.error(err);
+      if (err.status === 401) {
+        logout();
+      }
     } finally {
       setLoading(false);
     }

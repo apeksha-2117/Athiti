@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiFetch } from '../api/client';
+import { apiFetch, setAuthToken } from '../api/client';
 import { connectSocket, disconnectSocket } from '../realtime/socket';
 
 const AuthContext = createContext(null);
@@ -17,6 +17,7 @@ export function AuthProvider({ children }) {
       })
       .catch(() => {
         setUser(null);
+        setAuthToken(null);
       })
       .finally(() => {
         setLoading(false);
@@ -28,8 +29,11 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
+    if (data.token) {
+      setAuthToken(data.token);
+    }
     setUser(data.user);
-    connectSocket();
+    connectSocket(data.token);
     return data.user;
   };
 
@@ -39,6 +43,7 @@ export function AuthProvider({ children }) {
     } catch {
       // ignore
     } finally {
+      setAuthToken(null);
       setUser(null);
       disconnectSocket();
     }

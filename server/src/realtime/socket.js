@@ -1,5 +1,6 @@
 import { registerSocketIO } from './emitter.js';
 import { prisma } from '../config/prisma.js';
+import { verifyToken } from '../utils/token.js';
 
 /**
  * Socket.IO initialisation.
@@ -12,14 +13,26 @@ export function initSocketIO(io, sessionMiddleware) {
     io.engine.use(sessionMiddleware);
   }
 
-  // Authenticate socket connections via session
+  // Authenticate socket connections via token or session
   io.use((socket, next) => {
-    const session = socket.request.session;
-    if (!session?.user) {
-      return next(new Error('Unauthenticated'));
+    // 1. Try bearer token from auth object or handshake query
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (token) {
+      const payload = verifyToken(token);
+      if (payload) {
+        socket.user = payload;
+        return next();
+      }
     }
-    socket.user = session.user;
-    next();
+
+    // 2. Fall back to express-session
+    const session = socket.request.session;
+    if (session?.user) {
+      socket.user = session.user;
+      return next();
+    }
+
+    return next(new Error('Unauthenticated'));
   });
 
   io.on('connection', async (socket) => {

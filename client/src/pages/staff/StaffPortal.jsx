@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getSocket } from '../../realtime/socket';
 
 export function StaffPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -19,6 +19,9 @@ export function StaffPortal() {
       setTasks(data.tasks || []);
     } catch (err) {
       console.error(err);
+      if (err.status === 401) {
+        logout();
+      }
     } finally {
       setLoading(false);
     }

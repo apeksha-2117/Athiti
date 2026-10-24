@@ -21,7 +21,7 @@ const SERVICE_CATEGORIES = [
 ];
 
 export function GuestPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('EMERGENCY'); // 'EMERGENCY' | 'SERVICE'
   const [incidents, setIncidents] = useState([]);
   const [serviceRequests, setServiceRequests] = useState([]);
@@ -49,6 +49,9 @@ export function GuestPortal() {
       setServiceRequests(srvData.requests || []);
     } catch (err) {
       console.error(err);
+      if (err.status === 401) {
+        logout();
+      }
     } finally {
       setLoading(false);
     }

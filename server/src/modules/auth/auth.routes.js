@@ -4,13 +4,14 @@ import { validate } from '../../middleware/validate.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { loginSchema } from './auth.schema.js';
 import { verifyCredentials } from './auth.service.js';
+import { signToken } from '../../utils/token.js';
 
 export const authRouter = Router();
 
 // Strict rate limit on login
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30, // friendly limit for testing & presentations
   message: { error: 'Too many login attempts, try again later' },
 });
 
@@ -22,7 +23,8 @@ authRouter.post('/login', loginLimiter, validate(loginSchema), async (req, res, 
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     req.session.user = user;
-    res.json({ user });
+    const token = signToken(user);
+    res.json({ user, token });
   } catch (err) {
     next(err);
   }
