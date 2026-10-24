@@ -24,6 +24,9 @@ export function createApp() {
   const app = express();
   const httpServer = createServer(app);
 
+  // Trust Render reverse proxy for secure cookies and IP forwarding
+  app.set('trust proxy', 1);
+
   // ── Security headers
   app.use(helmet());
 
@@ -52,7 +55,7 @@ export function createApp() {
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   });
