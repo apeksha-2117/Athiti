@@ -10,6 +10,9 @@ export const createServiceRequestSchema = z.object({
   ]),
   description: z.string().min(1, 'Description is required'),
   priority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional().default('LOW'),
+  photoUrl: z.string().optional(),
+  contentType: z.string().optional(),
+  fileSize: z.number().optional(),
 });
 
 export const assignServiceRequestSchema = z.object({

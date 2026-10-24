@@ -1,7 +1,9 @@
 import { prisma } from '../../config/prisma.js';
 import { emitToHotel, emitToRole, emitToUser } from '../../realtime/emitter.js';
+import { findNearestResponder } from '../dispatch/proximity.js';
+import { getActiveStaffPositions } from '../../realtime/socket.js';
 
-export async function createSOS(guestId, { category = 'OTHER', description = 'EMERGENCY SOS ACTIVATED', coordinates }) {
+export async function createSOS(guestId, { category = 'OTHER', priority = 'CRITICAL', description = 'EMERGENCY SOS ACTIVATED', coordinates, photoUrl }) {
   // Find guest's active stay
   const activeStay = await prisma.stay.findFirst({
     where: { guestId, status: 'ACTIVE' },
@@ -14,22 +16,43 @@ export async function createSOS(guestId, { category = 'OTHER', description = 'EM
     throw error;
   }
 
+  const hotelId = activeStay.room.hotelId;
+
+  // Resolve nearest on-duty staff member based on proximity
+  const nearestResponder = await findNearestResponder(hotelId, {
+    roomNumber: activeStay.room.roomNumber,
+    coordinates,
+    category,
+    priority,
+    activeStaffPositions: getActiveStaffPositions(),
+  });
+
+  // Find hotel admin to record as assigner
+  const adminUser = await prisma.user.findFirst({
+    where: { role: 'ADMIN', hotelId },
+  });
+
+  let createdAssignment = null;
+  let createdAttachment = null;
+
   const incident = await prisma.$transaction(async (tx) => {
     let finalDescription = description;
     if (coordinates?.latitude && coordinates?.longitude) {
       finalDescription = `${description} [GPS: ${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)} ±${Math.round(coordinates.accuracy || 0)}m]`;
     }
 
+    const initialStatus = nearestResponder ? 'ASSIGNED' : 'REPORTED';
+
     const inc = await tx.incident.create({
       data: {
-        hotelId: activeStay.room.hotelId,
+        hotelId,
         reporterId: guestId,
         stayId: activeStay.id,
         roomId: activeStay.roomId,
         category,
         description: finalDescription,
-        priority: 'CRITICAL',
-        status: 'REPORTED',
+        priority,
+        status: initialStatus,
       },
       include: {
         room: true,
@@ -42,9 +65,25 @@ export async function createSOS(guestId, { category = 'OTHER', description = 'EM
         incidentId: inc.id,
         actorId: guestId,
         eventType: 'SOS_TRIGGERED',
-        description: `SOS activated from Room ${inc.room?.roomNumber || 'Unknown'}`,
+        description: `SOS (${priority}) activated from Room ${inc.room?.roomNumber || 'Unknown'}`,
       },
     });
+
+    if (coordinates?.photoUrl || photoUrl) {
+      const pUrl = coordinates?.photoUrl || photoUrl;
+      createdAttachment = await tx.attachment.create({
+        data: {
+          incidentId: inc.id,
+          uploadedById: guestId,
+          storageKey: pUrl,
+          contentType: 'image/jpeg',
+          fileSize: 0,
+        },
+        include: {
+          uploadedBy: { select: { id: true, name: true, role: true } },
+        },
+      });
+    }
 
     if (coordinates?.latitude && coordinates?.longitude) {
       const mapsUrl = `https://www.google.com/maps?q=${coordinates.latitude},${coordinates.longitude}`;
@@ -59,23 +98,84 @@ export async function createSOS(guestId, { category = 'OTHER', description = 'EM
       });
     }
 
+    // ── DYNAMIC AUTOMATIC PROXIMITY DISPATCH ──
+    if (nearestResponder?.staff) {
+      const instructions = `DYNAMIC PROXIMITY DISPATCH: Nearest responder (~${nearestResponder.estimatedMeters}m from Room ${inc.room?.roomNumber}). Proceed immediately!`;
+
+      createdAssignment = await tx.assignment.create({
+        data: {
+          incidentId: inc.id,
+          assigneeId: nearestResponder.staff.id,
+          assignedById: adminUser?.id || guestId,
+          instructions,
+          deadlineAt: new Date(Date.now() + 10 * 60 * 1000),
+          status: 'PENDING',
+        },
+        include: {
+          assignee: { select: { id: true, name: true, role: true, email: true } },
+          assignedBy: { select: { id: true, name: true } },
+          incident: { include: { room: true } },
+        },
+      });
+
+      await tx.incidentEvent.create({
+        data: {
+          incidentId: inc.id,
+          actorId: nearestResponder.staff.id,
+          eventType: 'AUTO_DISPATCHED',
+          description: `Dispatched nearest responder ${nearestResponder.staff.name} (${nearestResponder.position.sector || 'Patrol Sector'} • ~${nearestResponder.estimatedMeters}m away)`,
+          metadata: {
+            nearestStaff: nearestResponder.staff,
+            distanceMeters: nearestResponder.estimatedMeters,
+            staffPosition: nearestResponder.position,
+          },
+        },
+      });
+    }
+
     await tx.auditLog.create({
       data: {
         actorId: guestId,
         action: 'SOS_TRIGGERED',
         entityType: 'INCIDENT',
         entityId: inc.id,
-        changeSummary: { priority: 'CRITICAL', room: inc.room?.roomNumber, coordinates },
+        changeSummary: {
+          priority,
+          room: inc.room?.roomNumber,
+          coordinates,
+          autoDispatchedTo: nearestResponder?.staff?.name || null,
+          proximityMeters: nearestResponder?.estimatedMeters || null,
+        },
       },
     });
 
     return inc;
   });
 
+  // Attach assignments and responder metadata for immediate frontend consumption
+  incident.assignments = createdAssignment ? [createdAssignment] : [];
+  incident.attachments = createdAttachment ? [createdAttachment] : [];
+  incident.autoDispatchedTo = nearestResponder ? {
+    staff: nearestResponder.staff,
+    position: nearestResponder.position,
+    estimatedMeters: nearestResponder.estimatedMeters,
+  } : null;
+
   // Real-time broadcast
   emitToHotel(incident.hotelId, 'incident:created', incident);
   emitToRole('ADMIN', 'incident:created', incident);
   emitToUser(guestId, 'incident:created', incident);
+
+  // If a staff member was auto-dispatched, send them an urgent dispatch alert
+  if (createdAssignment && nearestResponder?.staff) {
+    emitToUser(nearestResponder.staff.id, 'assignment:new', createdAssignment);
+    emitToUser(nearestResponder.staff.id, 'assignment:urgent_dispatch', {
+      assignment: createdAssignment,
+      incident,
+      distanceMeters: nearestResponder.estimatedMeters,
+      sector: nearestResponder.position.sector,
+    });
+  }
 
   return incident;
 }
@@ -106,6 +206,7 @@ export async function createIncident(user, data) {
     throw error;
   }
 
+  let createdAttachment = null;
   const incident = await prisma.$transaction(async (tx) => {
     const inc = await tx.incident.create({
       data: {
@@ -124,12 +225,27 @@ export async function createIncident(user, data) {
       },
     });
 
+    if (data.photoUrl) {
+      createdAttachment = await tx.attachment.create({
+        data: {
+          incidentId: inc.id,
+          uploadedById: user.id,
+          storageKey: data.photoUrl,
+          contentType: data.contentType || 'image/jpeg',
+          fileSize: data.fileSize || 0,
+        },
+        include: {
+          uploadedBy: { select: { id: true, name: true, role: true } },
+        },
+      });
+    }
+
     await tx.incidentEvent.create({
       data: {
         incidentId: inc.id,
         actorId: user.id,
         eventType: 'INCIDENT_REPORTED',
-        description: `Incident reported: ${data.category}`,
+        description: `Incident reported: ${data.category}${data.photoUrl ? ' [Photo Attached]' : ''}`,
       },
     });
 
@@ -146,6 +262,8 @@ export async function createIncident(user, data) {
     return inc;
   });
 
+  incident.attachments = createdAttachment ? [createdAttachment] : [];
+
   emitToHotel(incident.hotelId, 'incident:created', incident);
   emitToRole('ADMIN', 'incident:created', incident);
   emitToUser(user.id, 'incident:created', incident);
@@ -158,6 +276,12 @@ export async function getIncidentsForGuest(guestId) {
     where: { reporterId: guestId },
     include: {
       room: true,
+      attachments: {
+        include: {
+          uploadedBy: { select: { id: true, name: true, role: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
       assignments: {
         include: {
           assignee: { select: { id: true, name: true, role: true } },
@@ -187,7 +311,10 @@ export async function getIncidentById(id, user) {
         include: { actor: { select: { id: true, name: true, role: true } } },
         orderBy: { createdAt: 'desc' },
       },
-      attachments: true,
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   });
 
@@ -219,6 +346,12 @@ export async function getAdminIncidents(hotelId, { status, priority, category } 
     include: {
       room: true,
       reporter: { select: { id: true, name: true, email: true } },
+      attachments: {
+        include: {
+          uploadedBy: { select: { id: true, name: true, role: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
       events: {
         orderBy: { createdAt: 'desc' },
         take: 5,

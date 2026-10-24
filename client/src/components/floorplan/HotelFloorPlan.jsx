@@ -1,5 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import '../../styles/floorplan.css';
+import { calculateSafestEvacuationPath } from '../../utils/evacuationRouter';
+import {
+  ShieldAlertIcon,
+  BellIcon,
+  MapPinIcon,
+  AlertTriangleIcon,
+  CheckCircleIcon,
+  ExternalLinkIcon,
+  RadioIcon,
+  UserIcon,
+} from '../common/Icons';
 
 /**
  * Geometric Blueprint Coordinates for deterministic room positions
@@ -22,6 +33,7 @@ export function HotelFloorPlan({
   serviceRequests = [],
   publicReports = [],
   staffList = [],
+  staffPositions = {},
   onSelectRoom,
   onAssignIncident,
   onEscalateIncident,
@@ -32,6 +44,19 @@ export function HotelFloorPlan({
   const [selectedEntity, setSelectedEntity] = useState(null); // { type: 'ROOM' | 'INCIDENT' | 'SERVICE', data }
   const [markerFilter, setMarkerFilter] = useState('ALL'); // 'ALL' | 'EMERGENCIES' | 'SERVICES'
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [showEvacPaths, setShowEvacPaths] = useState(false);
+
+  // Active staff on the selected floor
+  const floorStaff = useMemo(() => {
+    const staffArray = Array.isArray(staffPositions)
+      ? staffPositions
+      : Object.values(staffPositions || {});
+
+    return staffArray.filter((sp) => {
+      const fl = sp.coordinates?.floor || sp.floor;
+      return fl === selectedFloor;
+    });
+  }, [staffPositions, selectedFloor]);
 
   // Available floors in the hotel
   const availableFloors = [1, 2, 3];
@@ -74,6 +99,69 @@ export function HotelFloorPlan({
     });
     return counts;
   }, [activeIncidents, rooms]);
+
+  // Compute active incidents with proximity dispatch vectors on the selected floor
+  const activeFloorIncidentsWithDispatch = useMemo(() => {
+    const staffArray = Array.isArray(staffPositions)
+      ? staffPositions
+      : Object.values(staffPositions || {});
+
+    const floorRoomList = rooms.filter((r) => r.floor === selectedFloor);
+
+    return activeIncidents
+      .map((inc) => {
+        const rm = rooms.find(
+          (r) => r.id === inc.roomId || r.roomNumber === inc.room?.roomNumber
+        );
+        if (!rm || rm.floor !== selectedFloor) return null;
+
+        const roomIdx = (floorRoomList.findIndex((r) => r.id === rm.id) % 4) + 1;
+        const cfg = ROOM_LAYOUT_CONFIG[roomIdx] || ROOM_LAYOUT_CONFIG[1];
+
+        const assigneeId =
+          inc.assignments?.[0]?.assigneeId ||
+          inc.assignments?.[0]?.assignee?.id ||
+          inc.autoDispatchedTo?.staff?.id;
+
+        if (!assigneeId) return null;
+
+        const responder = staffArray.find(
+          (sp) =>
+            sp.staff?.id === assigneeId ||
+            sp.staff?.email === inc.assignments?.[0]?.assignee?.email ||
+            sp.staff?.id === inc.autoDispatchedTo?.staff?.id
+        );
+
+        if (!responder || !responder.coordinates) return null;
+        const respFloor = responder.coordinates.floor || responder.floor;
+        if (respFloor !== selectedFloor) return null;
+
+        return {
+          incident: inc,
+          room: rm,
+          roomPos: { x: cfg.doorX, y: cfg.doorY },
+          responderPos: { x: responder.coordinates.x, y: responder.coordinates.y },
+          responder,
+          estimatedMeters: inc.autoDispatchedTo?.estimatedMeters || 18,
+        };
+      })
+      .filter(Boolean);
+  }, [activeIncidents, rooms, selectedFloor, staffPositions]);
+
+  // Compute live evacuation egress routes on the selected floor
+  const floorEvacRoutes = useMemo(() => {
+    if (!showEvacPaths) return [];
+    return floorRooms
+      .map((rm) => {
+        return calculateSafestEvacuationPath({
+          startLocationKey: 'ROOM',
+          roomNumber: rm.roomNumber,
+          floor: selectedFloor,
+          activeIncidents,
+        });
+      })
+      .filter(Boolean);
+  }, [showEvacPaths, floorRooms, selectedFloor, activeIncidents]);
 
   // Helper to get active reports for a specific room
   const getRoomReports = (rm) => {
@@ -122,12 +210,13 @@ export function HotelFloorPlan({
               }}
             >
               <span>Floor {fl}</span>
-              <span style={{ fontSize: '0.75rem', opacity: 0.75 }}>
-                {fl === 1 ? '(Ground / Lobby)' : fl === 2 ? '(Level 2 / Lounge)' : '(Level 3 / Suites)'}
+              <span style={{ fontSize: '0.72rem', opacity: 0.75 }}>
+                {fl === 1 ? '(Ground Floor)' : fl === 2 ? '(Level 2)' : '(Level 3 Suites)'}
               </span>
               {emergencyCountByFloor[fl] > 0 && (
-                <span className="floor-badge-alert" title={`${emergencyCountByFloor[fl]} active emergencies on Floor ${fl}`}>
-                  🚨 {emergencyCountByFloor[fl]}
+                <span className="floor-badge-alert" title={`${emergencyCountByFloor[fl]} active emergencies on Floor ${fl}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span className="pulse-dot pulse-dot-critical" style={{ width: '5px', height: '5px' }} />
+                  <span>{emergencyCountByFloor[fl]}</span>
                 </span>
               )}
             </button>
@@ -136,7 +225,7 @@ export function HotelFloorPlan({
 
         {/* Marker Filters */}
         <div className="marker-filters">
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '4px' }}>Markers:</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '4px' }}>Filter:</span>
           <button
             className={`filter-chip ${markerFilter === 'ALL' ? 'active' : ''}`}
             onClick={() => setMarkerFilter('ALL')}
@@ -147,13 +236,28 @@ export function HotelFloorPlan({
             className={`filter-chip ${markerFilter === 'EMERGENCIES' ? 'active' : ''}`}
             onClick={() => setMarkerFilter('EMERGENCIES')}
           >
-            🚨 Emergencies ({activeIncidents.length})
+            Emergencies ({activeIncidents.length})
           </button>
           <button
             className={`filter-chip ${markerFilter === 'SERVICES' ? 'active' : ''}`}
             onClick={() => setMarkerFilter('SERVICES')}
           >
-            🛎️ Services ({activeServices.length})
+            Service Requests ({activeServices.length})
+          </button>
+          <button
+            className={`filter-chip ${showEvacPaths ? 'active' : ''}`}
+            style={{
+              borderColor: showEvacPaths ? '#10b981' : undefined,
+              color: showEvacPaths ? '#10b981' : undefined,
+              fontWeight: showEvacPaths ? 700 : undefined,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+            onClick={() => setShowEvacPaths(!showEvacPaths)}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+            <span>Safest Egress Routes</span>
           </button>
         </div>
 
@@ -173,10 +277,14 @@ export function HotelFloorPlan({
         <div className="blueprint-card">
           <div className="blueprint-header">
             <div className="blueprint-title">
-              <span>📐 GRAND ATHITHI HOTEL • ARCHITECTURAL BLUEPRINT</span>
-              <span style={{ color: '#fbbf24' }}>// FLOOR {selectedFloor}.00</span>
+              <span>GRAND ATHITHI HOTEL • ARCHITECTURAL BLUEPRINT</span>
+              <span style={{ color: '#fbbf24' }}>// LEVEL {selectedFloor}.00</span>
             </div>
-            <div style={{ display: 'flex', gap: '14px', fontSize: '0.74rem', color: '#64748b' }}>
+            <div style={{ display: 'flex', gap: '14px', fontSize: '0.74rem', color: '#64748b', alignItems: 'center' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#38bdf8', fontWeight: 700 }}>
+                <span className="pulse-dot pulse-dot-critical" style={{ width: '6px', height: '6px' }} />
+                <span>{floorStaff.length} Responder{floorStaff.length === 1 ? '' : 's'} on Floor {selectedFloor}</span>
+              </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} /> Available
               </span>
@@ -262,9 +370,9 @@ export function HotelFloorPlan({
                 <text x="500" y="255" fill="#64748b" fontSize="11" fontFamily="ui-monospace" textAnchor="middle" letterSpacing="2">
                   CENTRAL ACCESS CORRIDOR • EGRESS PASSAGE
                 </text>
-                <text x="290" y="325" fill="#ef4444" fontSize="10" fontFamily="ui-monospace">🧯 FE-1</text>
-                <text x="705" y="325" fill="#ef4444" fontSize="10" fontFamily="ui-monospace">🧯 FE-2</text>
-                <text x="390" y="235" fill="#ef4444" fontSize="10" fontFamily="ui-monospace">🔥 FHR</text>
+                <text x="290" y="325" fill="#ef4444" fontSize="9" fontWeight="700" fontFamily="ui-monospace">[FE-1]</text>
+                <text x="705" y="325" fill="#ef4444" fontSize="9" fontWeight="700" fontFamily="ui-monospace">[FE-2]</text>
+                <text x="390" y="235" fill="#ef4444" fontSize="9" fontWeight="700" fontFamily="ui-monospace">[FHR]</text>
 
                 {/* ── WEST STAIRCASE A (Upper Left of Center) ── */}
                 <g>
@@ -543,7 +651,7 @@ export function HotelFloorPlan({
                           fontFamily="ui-monospace"
                           textAnchor="middle"
                         >
-                          👤 {activeStay.guest?.name}
+                          {activeStay.guest?.name}
                         </text>
                       )}
 
@@ -595,13 +703,182 @@ export function HotelFloorPlan({
                             fontFamily="ui-monospace"
                             textAnchor="middle"
                           >
-                            {totalCount > 1 ? totalCount : hasEmergency ? '🚨' : hasHighHazard ? '⚠️' : '🛎️'}
+                            {totalCount > 1 ? totalCount : hasEmergency ? '!' : hasHighHazard ? '▲' : '•'}
                           </text>
                         </g>
                       )}
                     </g>
                   );
                 })}
+
+                {/* ── AUTOMATED PROXIMITY DISPATCH VECTORS ── */}
+                {activeFloorIncidentsWithDispatch.map((vector, vIdx) => {
+                  const midX = (vector.responderPos.x + vector.roomPos.x) / 2;
+                  const midY = (vector.responderPos.y + vector.roomPos.y) / 2;
+                  return (
+                    <g key={`vector-${vector.incident.id || vIdx}`} className="dispatch-vector-group">
+                      {/* Animated dashed line */}
+                      <line
+                        x1={vector.responderPos.x}
+                        y1={vector.responderPos.y}
+                        x2={vector.roomPos.x}
+                        y2={vector.roomPos.y}
+                        stroke="#ef4444"
+                        strokeWidth="2.5"
+                        strokeDasharray="6 4"
+                        strokeLinecap="round"
+                        opacity="0.85"
+                      />
+                      {/* Target Pulse at Room Door */}
+                      <circle
+                        cx={vector.roomPos.x}
+                        cy={vector.roomPos.y}
+                        r="6"
+                        fill="#ef4444"
+                        opacity="0.9"
+                      />
+                      {/* Midpoint Distance Badge */}
+                      <g transform={`translate(${midX}, ${midY})`}>
+                        <rect
+                          x="-62"
+                          y="-11"
+                          width="124"
+                          height="22"
+                          rx="4"
+                          fill="#090d16"
+                          stroke="#ef4444"
+                          strokeWidth="1.5"
+                        />
+                        <text
+                          x="0"
+                          y="4"
+                          fill="#fca5a5"
+                          fontSize="8.5"
+                          fontWeight="900"
+                          fontFamily="ui-monospace"
+                          textAnchor="middle"
+                        >
+                          [DISPATCH] ~{vector.estimatedMeters}m
+                        </text>
+                      </g>
+                    </g>
+                  );
+                })}
+
+                {/* ── LIVE STAFF RESPONDER POSITIONS ON THIS FLOOR ── */}
+                {floorStaff.map((sp, sIdx) => {
+                  const x = sp.coordinates?.x || 500;
+                  const y = sp.coordinates?.y || 350;
+                  const staffName = sp.staff?.name || 'On-Duty Responder';
+                  const firstName = staffName.split(' ')[0].toUpperCase();
+                  const roleCode =
+                    sp.staff?.role === 'SECURITY'
+                      ? 'SEC'
+                      : sp.staff?.role === 'MAINTENANCE'
+                      ? 'ENG'
+                      : 'HKP';
+
+                  return (
+                    <g key={sp.staff?.id || sIdx} className="staff-responder-pin" style={{ cursor: 'pointer' }}>
+                      {/* Outer radar ripple ring */}
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r="20"
+                        fill="rgba(14, 165, 233, 0.14)"
+                        stroke="#0ea5e9"
+                        strokeWidth="1"
+                        strokeDasharray="3 3"
+                      />
+                      {/* Staff pin badge */}
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r="12"
+                        fill="#0284c7"
+                        stroke="#ffffff"
+                        strokeWidth="2"
+                        filter="drop-shadow(0 0 6px rgba(14, 165, 233, 0.6))"
+                      />
+                      {/* Role abbreviation text */}
+                      <text
+                        x={x}
+                        y={y + 3.5}
+                        fill="#ffffff"
+                        fontSize="8.5"
+                        fontWeight="900"
+                        fontFamily="ui-monospace"
+                        textAnchor="middle"
+                      >
+                        {roleCode}
+                      </text>
+                      {/* Name Label */}
+                      <rect
+                        x={x - 48}
+                        y={y + 16}
+                        width="96"
+                        height="18"
+                        rx="3"
+                        fill="#090d16"
+                        stroke="#0ea5e9"
+                        strokeWidth="1"
+                        opacity="0.95"
+                      />
+                      <text
+                        x={x}
+                        y={y + 28.5}
+                        fill="#38bdf8"
+                        fontSize="8.5"
+                        fontWeight="800"
+                        fontFamily="ui-monospace"
+                        textAnchor="middle"
+                      >
+                        {firstName} • {roleCode}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* ── DYNAMIC EVACUATION EGRESS ROUTES ON THIS FLOOR ── */}
+                {showEvacPaths &&
+                  floorEvacRoutes.map((evacRoute, rIdx) => {
+                    if (!evacRoute.svgPolyline) return null;
+                    return (
+                      <g key={`evac-${rIdx}`} className="blueprint-evac-route">
+                        {/* Underlay glow */}
+                        <polyline
+                          points={evacRoute.svgPolyline}
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="7"
+                          opacity="0.3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* Animated dash line */}
+                        <polyline
+                          points={evacRoute.svgPolyline}
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="3"
+                          strokeDasharray="8 6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* Safe Exit Beacon Marker */}
+                        {evacRoute.targetExit && (
+                          <g transform={`translate(${evacRoute.targetExit.x}, ${evacRoute.targetExit.y})`}>
+                            <circle cx="0" cy="0" r="16" fill="rgba(16, 185, 129, 0.25)" stroke="#10b981" strokeWidth="1" strokeDasharray="3 3" />
+                            <circle cx="0" cy="0" r="9" fill="#10b981" stroke="#ffffff" strokeWidth="2" />
+                            <rect x="-45" y="14" width="90" height="16" rx="3" fill="#064e3b" stroke="#10b981" strokeWidth="1" />
+                            <text x="0" y="25.5" fill="#a7f3d0" fontSize="8" fontWeight="800" fontFamily="ui-monospace" textAnchor="middle">
+                              SAFE EGRESS
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })}
               </svg>
             </div>
           </div>
@@ -613,8 +890,8 @@ export function HotelFloorPlan({
           {selectedEntity ? (
             <div className="inspector-card">
               <div className="inspector-header">
-                <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--brand-light)' }}>
-                  {selectedEntity.type === 'ROOM' ? '🏨 ROOM INSPECTOR' : selectedEntity.type === 'INCIDENT' ? '🚨 EMERGENCY DISPATCH' : '🛎️ SERVICE TICKET'}
+                <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--brand-light)', fontWeight: 700 }}>
+                  {selectedEntity.type === 'ROOM' ? 'ROOM INSPECTION' : selectedEntity.type === 'INCIDENT' ? 'EMERGENCY DISPATCH' : 'SERVICE TICKET'}
                 </span>
                 <button
                   onClick={() => setSelectedEntity(null)}
@@ -636,7 +913,7 @@ export function HotelFloorPlan({
 
                   {/* Physical Presence Safety Callout (PRD FR-029) */}
                   <div className="presence-callout">
-                    ⚠️ <strong>Physical Presence Disclaimer:</strong> Booking occupancy is distinct from verified physical presence. Do not assume room is occupied without on-scene confirmation.
+                    <strong>Physical Presence Disclaimer:</strong> Booking occupancy is distinct from verified physical presence. Do not assume room is occupied without on-scene confirmation.
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.82rem', marginBottom: '14px' }}>
@@ -672,8 +949,9 @@ export function HotelFloorPlan({
                     if (roomIncidents.length === 0) return null;
                     return (
                       <div style={{ marginBottom: '14px' }}>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-critical)', marginBottom: '6px' }}>
-                          🚨 ACTIVE CRISIS REPORTS ({roomIncidents.length})
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-critical)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <ShieldAlertIcon size={14} color="var(--color-critical)" />
+                          <span>ACTIVE CRISIS REPORTS ({roomIncidents.length})</span>
                         </div>
                         {roomIncidents.map((inc) => (
                           <div
@@ -709,8 +987,9 @@ export function HotelFloorPlan({
                     if (roomServices.length === 0) return null;
                     return (
                       <div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-low)', marginBottom: '6px' }}>
-                          🛎️ PENDING SERVICE REQUESTS ({roomServices.length})
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-low)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <BellIcon size={14} color="var(--color-low)" />
+                          <span>PENDING SERVICE REQUESTS ({roomServices.length})</span>
                         </div>
                         {roomServices.map((srv) => (
                           <div
@@ -785,16 +1064,18 @@ export function HotelFloorPlan({
                     if (!locEvent) return null;
                     return (
                       <div style={{
-                        background: 'rgba(245, 158, 11, 0.15)',
-                        border: '1px solid #f59e0b',
-                        borderRadius: '4px',
+                        background: 'rgba(245, 158, 11, 0.10)',
+                        border: '1px solid rgba(245, 158, 11, 0.30)',
+                        borderRadius: 'var(--radius-xs)',
                         padding: '8px 10px',
                         fontSize: '0.8rem',
                         color: '#fbbf24',
-                        fontWeight: 700,
                         marginBottom: '14px',
                       }}>
-                        📍 Guest Reported Physical Location:
+                        <div style={{ fontSize: '0.74rem', color: '#fbbf24', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <MapPinIcon size={13} color="#fbbf24" />
+                          <span>Reported Physical Location:</span>
+                        </div>
                         <div style={{ color: '#f8fafc', fontWeight: 600, marginTop: '3px' }}>
                           {locEvent.description.replace('Guest clarified physical location: ', '')}
                         </div>
@@ -817,16 +1098,17 @@ export function HotelFloorPlan({
 
                     return (
                       <div style={{
-                        background: 'rgba(56, 189, 248, 0.1)',
-                        border: '1px solid #38bdf8',
-                        borderRadius: '4px',
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        border: '1px solid rgba(56, 189, 248, 0.30)',
+                        borderRadius: 'var(--radius-xs)',
                         padding: '8px 10px',
                         fontSize: '0.8rem',
                         color: '#38bdf8',
                         marginBottom: '14px',
                       }}>
                         <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          🛰️ Device GPS Captured
+                          <MapPinIcon size={14} color="#38bdf8" />
+                          <span>Device Coordinates Captured</span>
                           {acc && <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>({acc})</span>}
                         </div>
                         <div style={{ fontSize: '0.76rem', color: '#f8fafc', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
@@ -847,7 +1129,8 @@ export function HotelFloorPlan({
                             textDecoration: 'underline',
                           }}
                         >
-                          🗺️ View Exact GPS on Google Maps ↗
+                          <ExternalLinkIcon size={12} color="#fbbf24" />
+                          <span>View Coordinates on Google Maps ↗</span>
                         </a>
                       </div>
                     );
@@ -870,27 +1153,31 @@ export function HotelFloorPlan({
                     {onAssignIncident && (
                       <button
                         className="btn btn-primary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         onClick={() => onAssignIncident(selectedEntity.data)}
                       >
-                        👥 Dispatch Staff Responder
+                        <UserIcon size={14} />
+                        <span>Dispatch Staff Responder</span>
                       </button>
                     )}
                     {onEscalateIncident && selectedEntity.data.status !== 'ESCALATED' && (
                       <button
                         className="btn btn-secondary btn-sm"
-                        style={{ color: 'var(--color-high)', borderColor: 'rgba(249,115,22,0.4)' }}
+                        style={{ color: 'var(--color-high)', borderColor: 'rgba(249,115,22,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         onClick={() => onEscalateIncident(selectedEntity.data)}
                       >
-                        ⚡ Escalate Priority
+                        <AlertTriangleIcon size={14} color="var(--color-high)" />
+                        <span>Escalate Priority</span>
                       </button>
                     )}
                     {onCloseIncident && (
                       <button
                         className="btn btn-secondary btn-sm"
-                        style={{ color: 'var(--color-success)', borderColor: 'rgba(16,185,129,0.4)' }}
+                        style={{ color: 'var(--color-success)', borderColor: 'rgba(16,185,129,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         onClick={() => onCloseIncident(selectedEntity.data)}
                       >
-                        ✓ Resolve & Close Incident
+                        <CheckCircleIcon size={14} color="var(--color-success)" />
+                        <span>Resolve & Close Incident</span>
                       </button>
                     )}
                   </div>
@@ -904,10 +1191,11 @@ export function HotelFloorPlan({
                     <span style={{
                       backgroundColor: 'var(--color-low-bg)',
                       color: '#38bdf8',
-                      fontSize: '0.75rem',
+                      fontSize: '0.72rem',
                       fontWeight: 800,
                       padding: '2px 8px',
-                      borderRadius: '4px',
+                      borderRadius: 'var(--radius-xs)',
+                      fontFamily: 'var(--font-mono)',
                     }}>
                       SERVICE TICKET
                     </span>
@@ -942,13 +1230,15 @@ export function HotelFloorPlan({
               )}
             </div>
           ) : (
-            <div className="inspector-card" style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔍</div>
-              <strong style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+            <div className="inspector-card" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px', color: 'var(--text-muted)' }}>
+                <MapPinIcon size={28} />
+              </div>
+              <strong style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '4px', fontSize: '0.88rem' }}>
                 Interactive Blueprint Inspector
               </strong>
-              <p style={{ fontSize: '0.82rem', lineHeight: 1.4 }}>
-                Click any room outline or emergency marker on the floor plan to inspect live status, guest stays, and active reports.
+              <p style={{ fontSize: '0.80rem', lineHeight: 1.45 }}>
+                Select any room boundary or active emergency marker on the architectural floor plan to inspect physical presence status, guest records, and dispatch timelines.
               </p>
             </div>
           )}
@@ -956,19 +1246,20 @@ export function HotelFloorPlan({
           {/* ── Unlocated Reports Shelf (PRD & Constraint Req) ── */}
           <div className="unlocated-shelf">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                ⚠️ UNLOCATED REPORTS ({unlocatedReports.length})
+              <span style={{ fontSize: '0.80rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '0.04em' }}>
+                <AlertTriangleIcon size={14} color="#fbbf24" />
+                <span>UNLOCATED STAGING QUEUE ({unlocatedReports.length})</span>
               </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>No Room Assigned</span>
+              <span style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>No Room Assigned</span>
             </div>
 
             <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.3 }}>
-              Public hazard reports or general incidents without a mapped room location are monitored separately and never placed arbitrarily on the blueprint.
+              Public hazard reports and general incidents without a mapped room location are monitored here and never placed arbitrarily on the blueprint.
             </p>
 
             {unlocatedReports.length === 0 ? (
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>
-                ✓ No unlocated reports pending
+                No unlocated reports pending
               </div>
             ) : (
               <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
@@ -978,7 +1269,6 @@ export function HotelFloorPlan({
                     className="unlocated-item"
                     onClick={() => {
                       if (rpt.isPublic) {
-                        // Show public report
                         setSelectedEntity({
                           type: 'INCIDENT',
                           data: {
@@ -997,9 +1287,9 @@ export function HotelFloorPlan({
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700 }}>
                       <span style={{ color: rpt.isPublic ? '#38bdf8' : 'var(--color-critical)' }}>
-                        {rpt.isPublic ? '🌐 Bystander Report' : '🚨 Unlocated Incident'}
+                        {rpt.isPublic ? 'Bystander Report' : 'Unlocated Incident'}
                       </span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.70rem', fontFamily: 'var(--font-mono)' }}>
                         {new Date(rpt.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>

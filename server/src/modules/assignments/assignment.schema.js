@@ -13,4 +13,7 @@ export const declineAssignmentSchema = z.object({
 export const updateAssignmentStatusSchema = z.object({
   status: z.enum(['EN_ROUTE', 'ON_SCENE', 'IN_PROGRESS', 'COMPLETED']),
   notes: z.string().optional(),
+  photoProofUrl: z.string().optional(),
+  contentType: z.string().optional(),
+  fileSize: z.number().optional(),
 });

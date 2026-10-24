@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../../api/client';
+import { MegaphoneIcon, CheckCircleIcon } from '../../components/common/Icons';
 
 const CATEGORIES = [
-  { value: 'FIRE_OR_SMOKE', label: '🔥 Fire / Smoke Observed' },
-  { value: 'ELECTRICAL_HAZARD', label: '⚡ Exposed Wires / Electrical Spark' },
-  { value: 'WATER_LEAKAGE', label: '💧 Water Burst / Flooding' },
-  { value: 'STRUCTURAL_HAZARD', label: '🧱 Falling Debris / Structural Crack' },
-  { value: 'SECURITY_THREAT', label: '🛡️ Suspicious Activity / Trespasser' },
-  { value: 'OTHER', label: '⚠️ Other Physical Hazard' },
+  { value: 'FIRE_OR_SMOKE', label: 'Fire or Smoke Observed' },
+  { value: 'ELECTRICAL_HAZARD', label: 'Exposed Wires / Electrical Hazard' },
+  { value: 'WATER_LEAKAGE', label: 'Water Burst / Flooding' },
+  { value: 'STRUCTURAL_HAZARD', label: 'Falling Debris / Structural Hazard' },
+  { value: 'SECURITY_THREAT', label: 'Suspicious Activity / Trespasser' },
+  { value: 'OTHER', label: 'Other Physical Threat' },
 ];
 
 export function PublicReportPage() {
@@ -37,30 +38,39 @@ export function PublicReportPage() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '580px', margin: '40px auto' }}>
-      <div className="card card-elevated" style={{ padding: '36px 30px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <span className="badge badge-high" style={{ marginBottom: '8px' }}>
-            Public Hazard Reporting
-          </span>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Report Hazard / Safety Threat
+    <div className="container" style={{ maxWidth: '580px', margin: 'clamp(20px, 4vh, 40px) auto', padding: '0 14px' }}>
+      <div className="card card-elevated" style={{ padding: 'clamp(20px, 4vw, 36px) clamp(16px, 4vw, 30px)' }}>
+        <div style={{ marginBottom: '22px' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'var(--brand-light)',
+            marginBottom: '6px',
+          }}>
+            <MegaphoneIcon size={18} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, letterSpacing: '0.04em' }}>Public Hazard Reporting</span>
+          </div>
+          <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 800, color: 'var(--text-primary)' }}>
+            Report Incident or Physical Threat
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '6px' }}>
-            For hotel visitors, passersby, or staff outside shift. Submissions route directly to the Grand Athithi Hotel safety command console.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: '4px' }}>
+            For hotel visitors, bystanders, or staff off-shift. Transmits directly to the Grand Athithi Hotel command operations console.
           </p>
         </div>
 
         {submitted ? (
           <div style={{
-            backgroundColor: 'var(--color-success-bg)',
-            border: '1px solid var(--color-success)',
+            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
             padding: '24px',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 'var(--radius-sm)',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>✅</div>
-            <h2 style={{ fontSize: '1.2rem', color: 'var(--color-success)', fontWeight: 700 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', color: 'var(--color-success)' }}>
+              <CheckCircleIcon size={32} />
+            </div>
+            <h2 style={{ fontSize: '1.15rem', color: 'var(--color-success)', fontWeight: 700 }}>
               Report Received by Control Room
             </h2>
             <p style={{ fontSize: '0.88rem', color: 'var(--text-primary)', margin: '12px 0' }}>
@@ -155,7 +165,7 @@ export function PublicReportPage() {
               color: 'var(--text-muted)',
               marginBottom: '20px',
             }}>
-              ⚠️ If life or physical safety is in immediate catastrophic peril, also dial local emergency dispatch (112 / 911) directly.
+              <strong>Immediate Peril:</strong> If life or physical safety is in immediate catastrophic peril, also dial local emergency dispatch (112 / 911) directly.
             </div>
 
             <button

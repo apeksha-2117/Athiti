@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../api/client';
+import { apiFetch, getMediaUrl } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { getSocket } from '../../realtime/socket';
 import { HotelFloorPlan } from '../../components/floorplan/HotelFloorPlan';
+import {
+  ShieldAlertIcon,
+  MapPinIcon,
+  BellIcon,
+  MegaphoneIcon,
+  UsersIcon,
+  ActivityIcon,
+  RefreshCwIcon,
+  CheckCircleIcon,
+  AlertTriangleIcon,
+  FlameIcon,
+  ZapIcon,
+  DropletIcon,
+  FileTextIcon,
+  ChevronRightIcon,
+  SparklesIcon,
+  GridIcon,
+} from '../../components/common/Icons';
 
 export function AdminPortal() {
   const { user, logout } = useAuth();
@@ -15,6 +33,7 @@ export function AdminPortal() {
   const [publicReports, setPublicReports] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [staffList, setStaffList] = useState([]);
+  const [staffPositions, setStaffPositions] = useState({});
   const [loading, setLoading] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState('ALL');
 
@@ -51,13 +70,14 @@ export function AdminPortal() {
 
   const loadData = async () => {
     try {
-      const [incData, staffData, roomsData, srvData, pubData, auditData] = await Promise.all([
+      const [incData, staffData, roomsData, srvData, pubData, auditData, locData] = await Promise.all([
         apiFetch('/admin/incidents'),
         apiFetch('/admin/staff'),
         apiFetch('/admin/rooms'),
         apiFetch('/admin/service-requests'),
         apiFetch('/admin/public-reports'),
         apiFetch('/admin/audit-logs'),
+        apiFetch('/admin/staff/locations').catch(() => ({ staffPositions: {} })),
       ]);
       setIncidents(incData.incidents || []);
       setStaffList(staffData.staff || []);
@@ -65,6 +85,7 @@ export function AdminPortal() {
       setServiceRequests(srvData.requests || []);
       setPublicReports(pubData.reports || []);
       setAuditLogs(auditData.logs || []);
+      setStaffPositions(locData?.staffPositions || {});
     } catch (err) {
       console.error(err);
       if (err.status === 401) {
@@ -81,6 +102,10 @@ export function AdminPortal() {
     const socket = getSocket();
     const handleRefresh = () => {
       loadData();
+    };
+
+    const handleStaffPositions = (positions) => {
+      setStaffPositions(positions || {});
     };
 
     const handleIncidentCreated = (newIncident) => {
@@ -102,6 +127,7 @@ export function AdminPortal() {
     socket.on('incident:created', handleIncidentCreated);
     socket.on('incident:updated', handleIncidentUpdated);
     socket.on('incident:assigned', handleRefresh);
+    socket.on('staff:positions', handleStaffPositions);
     socket.on('assignment:acknowledged', handleRefresh);
     socket.on('assignment:declined', handleRefresh);
     socket.on('assignment:updated', handleRefresh);
@@ -127,6 +153,7 @@ export function AdminPortal() {
       socket.off('incident:created', handleIncidentCreated);
       socket.off('incident:updated', handleIncidentUpdated);
       socket.off('incident:assigned', handleRefresh);
+      socket.off('staff:positions', handleStaffPositions);
       socket.off('assignment:acknowledged', handleRefresh);
       socket.off('assignment:declined', handleRefresh);
       socket.off('assignment:updated', handleRefresh);
@@ -282,10 +309,9 @@ export function AdminPortal() {
   const floors = [1, 2, 3];
 
   return (
-    <div className="container" style={{ maxWidth: '1240px', paddingBottom: '60px' }}>
+    <div className="container" style={{ maxWidth: '1240px', paddingBottom: '60px', paddingTop: '20px' }}>
       {/* Header */}
       <div style={{
-        marginTop: '20px',
         marginBottom: '20px',
         display: 'flex',
         alignItems: 'center',
@@ -294,91 +320,131 @@ export function AdminPortal() {
         gap: '12px',
       }}>
         <div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Incident Command Centre</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Grand Athithi Hotel • Central Dispatch Console
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, letterSpacing: '-0.015em' }}>
+            Incident Command Console
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '2px' }}>
+            Grand Athithi Hotel • Central Emergency Operations & Dispatch
           </p>
         </div>
-        <button onClick={loadData} className="btn btn-secondary btn-sm">
-          Refresh Live Console
+        <button onClick={loadData} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <RefreshCwIcon size={14} />
+          <span>Synchronize Console</span>
         </button>
       </div>
 
-      {/* KPI Counters */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '14px',
-        marginBottom: '24px',
-      }}>
-        <div className="card card-elevated" style={{ borderLeft: '4px solid var(--color-critical)' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+      {/* Telemetry Strip (Replaces clichéd KPI cards) */}
+      <div className="telemetry-strip">
+        <div className="telemetry-item">
+          <div className="telemetry-label">
+            <span className={`pulse-dot ${activeEmergencies > 0 ? 'pulse-dot-critical' : ''}`} style={{ backgroundColor: activeEmergencies > 0 ? 'var(--color-critical)' : 'var(--text-muted)' }} />
             Active Emergencies
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-critical)', marginTop: '4px' }}>
+          <div className="telemetry-value" style={{ color: activeEmergencies > 0 ? 'var(--color-critical)' : 'var(--text-primary)' }}>
             {activeEmergencies}
           </div>
         </div>
 
-        <div className="card card-elevated" style={{ borderLeft: '4px solid var(--color-high)' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-            Unassigned SOS Reports
+        <div className="telemetry-item">
+          <div className="telemetry-label">
+            <span className="pulse-dot" style={{ backgroundColor: unassignedCount > 0 ? 'var(--color-high)' : 'var(--text-muted)' }} />
+            Unassigned SOS
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-high)', marginTop: '4px' }}>
+          <div className="telemetry-value" style={{ color: unassignedCount > 0 ? 'var(--color-high)' : 'var(--text-primary)' }}>
             {unassignedCount}
           </div>
         </div>
 
-        <div className="card card-elevated" style={{ borderLeft: '4px solid var(--brand-light)' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+        <div className="telemetry-item">
+          <div className="telemetry-label">
+            <span className="pulse-dot" style={{ backgroundColor: respondingCount > 0 ? 'var(--brand-light)' : 'var(--text-muted)' }} />
             Active Responders
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--brand-light)', marginTop: '4px' }}>
+          <div className="telemetry-value" style={{ color: respondingCount > 0 ? 'var(--brand-light)' : 'var(--text-primary)' }}>
             {respondingCount}
           </div>
         </div>
 
-        <div className="card card-elevated" style={{ borderLeft: '4px solid var(--color-low)' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-            Unverified Public Reports
+        <div className="telemetry-item">
+          <div className="telemetry-label">
+            <span className="pulse-dot" style={{ backgroundColor: pendingReportsCount > 0 ? 'var(--color-low)' : 'var(--text-muted)' }} />
+            Unverified Public Triage
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-low)', marginTop: '4px' }}>
+          <div className="telemetry-value" style={{ color: pendingReportsCount > 0 ? 'var(--color-low)' : 'var(--text-primary)' }}>
             {pendingReportsCount}
           </div>
         </div>
       </div>
 
       {/* Main Console View Selector Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex',
+        gap: '6px',
+        marginBottom: '20px',
+        borderBottom: '1px solid var(--border-subtle)',
+        paddingBottom: '10px',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+      }}>
         <button
           onClick={() => setActiveTab('INCIDENTS')}
           className={`btn btn-sm ${activeTab === 'INCIDENTS' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}
         >
-          🚨 Crisis Queue ({incidents.filter(i => i.status !== 'CLOSED').length})
+          <ShieldAlertIcon size={15} />
+          <span>Incident Queue</span>
+          <span className="badge badge-neutral" style={{ fontSize: '0.65rem', marginLeft: '4px' }}>
+            {incidents.filter(i => i.status !== 'CLOSED').length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('ROOMS')}
           className={`btn btn-sm ${activeTab === 'ROOMS' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}
         >
-          🏨 Hotel Floor Plan ({rooms.length})
+          <MapPinIcon size={15} />
+          <span>Floor Plan Blueprint</span>
+          <span className="badge badge-neutral" style={{ fontSize: '0.65rem', marginLeft: '4px' }}>
+            {rooms.length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('SERVICES')}
           className={`btn btn-sm ${activeTab === 'SERVICES' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}
         >
-          🛎️ Service Queue ({serviceRequests.length})
+          <BellIcon size={15} />
+          <span>Service Requests</span>
+          <span className="badge badge-neutral" style={{ fontSize: '0.65rem', marginLeft: '4px' }}>
+            {serviceRequests.length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('PUBLIC_REPORTS')}
           className={`btn btn-sm ${activeTab === 'PUBLIC_REPORTS' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}
         >
-          🌐 Public Triage ({publicReports.length})
+          <MegaphoneIcon size={15} />
+          <span>Public Triage</span>
+          <span className="badge badge-neutral" style={{ fontSize: '0.65rem', marginLeft: '4px' }}>
+            {publicReports.length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveTab('AUDIT_LOGS')}
           className={`btn btn-sm ${activeTab === 'AUDIT_LOGS' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', flexShrink: 0 }}
         >
-          📜 Audit Trail ({auditLogs.length})
+          <ActivityIcon size={15} />
+          <span>Audit Trail</span>
+          <span className="badge badge-neutral" style={{ fontSize: '0.65rem', marginLeft: '4px' }}>
+            {auditLogs.length}
+          </span>
         </button>
       </div>
 
@@ -413,7 +479,8 @@ export function AdminPortal() {
                     key={inc.id}
                     className="card card-elevated"
                     style={{
-                      borderLeft: inc.priority === 'CRITICAL' ? '4px solid var(--color-critical)' : '4px solid var(--border-muted)',
+                      border: inc.priority === 'CRITICAL' ? '1px solid rgba(239, 68, 68, 0.45)' : '1px solid var(--border-muted)',
+                      backgroundColor: inc.priority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.04)' : 'var(--bg-surface-elevated)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
@@ -434,6 +501,42 @@ export function AdminPortal() {
                           {inc.description}
                         </p>
 
+                        {/* Attached Photos / Completion Proof */}
+                        {inc.attachments && inc.attachments.length > 0 && (
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                            {inc.attachments.map((att) => {
+                              const isStaffProof = att.uploadedBy?.role === 'STAFF';
+                              return (
+                                <a
+                                  key={att.id || att.storageKey}
+                                  href={getMediaUrl(att.storageKey)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    backgroundColor: isStaffProof ? 'rgba(16, 185, 129, 0.12)' : 'rgba(56, 189, 248, 0.12)',
+                                    border: `1px solid ${isStaffProof ? 'rgba(16, 185, 129, 0.4)' : 'rgba(56, 189, 248, 0.4)'}`,
+                                    padding: '3px 8px',
+                                    borderRadius: 'var(--radius-xs)',
+                                    fontSize: '0.74rem',
+                                    color: isStaffProof ? '#6ee7b7' : '#7dd3fc',
+                                    textDecoration: 'none',
+                                  }}
+                                >
+                                  <img
+                                    src={getMediaUrl(att.storageKey)}
+                                    alt="evidence"
+                                    style={{ width: '22px', height: '22px', borderRadius: '3px', objectFit: 'cover' }}
+                                  />
+                                  <span>{isStaffProof ? 'Staff Completion Proof' : 'Guest Photo Evidence'}</span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
                           Reporter: {inc.reporter?.name || 'Guest / Public'} • Room {inc.room?.roomNumber || 'N/A'} (Floor {inc.room?.floor || 'N/A'}) • {new Date(inc.createdAt).toLocaleTimeString()}
                         </div>
@@ -448,9 +551,10 @@ export function AdminPortal() {
                         <button
                           className="btn btn-secondary btn-sm"
                           onClick={() => openAiBrief(inc)}
-                          style={{ borderColor: 'var(--brand-primary)', color: 'var(--brand-light)' }}
+                          style={{ borderColor: 'var(--brand-primary)', color: 'var(--brand-light)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         >
-                          ✨ AI Brief
+                          <SparklesIcon size={14} color="var(--brand-light)" />
+                          <span>AI Brief</span>
                         </button>
 
                         {inc.status !== 'CLOSED' && (
@@ -487,18 +591,45 @@ export function AdminPortal() {
                     {activeAssignment && (
                       <div style={{
                         marginTop: '12px',
-                        padding: '8px 12px',
-                        backgroundColor: 'var(--bg-app)',
+                        padding: '10px 14px',
+                        backgroundColor: 'rgba(56, 189, 248, 0.06)',
+                        border: '1px solid rgba(56, 189, 248, 0.22)',
                         borderRadius: 'var(--radius-sm)',
                         fontSize: '0.82rem',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '8px',
                       }}>
-                        <div>
-                          Assigned: <strong>{activeAssignment.assignee?.name}</strong> • Status: <strong>{activeAssignment.status}</strong>
-                          {activeAssignment.instructions && <span> • Instructions: "{activeAssignment.instructions}"</span>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            backgroundColor: 'rgba(56, 189, 248, 0.15)',
+                            padding: '2px 8px',
+                            borderRadius: 'var(--radius-xs)',
+                            fontWeight: 700,
+                            color: '#38bdf8',
+                            fontSize: '0.74rem',
+                          }}>
+                            <span className="pulse-dot pulse-dot-critical" style={{ width: '4px', height: '4px' }} />
+                            <span>Proximity Auto-Dispatched</span>
+                          </span>
+                          <span>
+                            Responder: <strong>{activeAssignment.assignee?.name}</strong> ({activeAssignment.assignee?.role})
+                          </span>
+                          <span className="badge badge-high" style={{ fontSize: '0.70rem' }}>
+                            {activeAssignment.status}
+                          </span>
+                          {activeAssignment.instructions && (
+                            <span style={{ color: 'var(--text-secondary)' }}>• "{activeAssignment.instructions}"</span>
+                          )}
                         </div>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          Admin override available
+                        </span>
                       </div>
                     )}
 
@@ -533,15 +664,19 @@ export function AdminPortal() {
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
                 className={`btn btn-sm ${floorplanViewMode === 'BLUEPRINT' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => setFloorplanViewMode('BLUEPRINT')}
               >
-                📐 CAD Blueprint View
+                <GridIcon size={14} />
+                <span>CAD Blueprint View</span>
               </button>
               <button
                 className={`btn btn-sm ${floorplanViewMode === 'CARDS' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => setFloorplanViewMode('CARDS')}
               >
-                📋 Room Cards Grid
+                <FileTextIcon size={14} />
+                <span>Room Cards Grid</span>
               </button>
             </div>
           </div>
@@ -553,6 +688,7 @@ export function AdminPortal() {
               serviceRequests={serviceRequests}
               publicReports={publicReports}
               staffList={staffList}
+              staffPositions={staffPositions}
               onSelectRoom={(rm) => setSelectedRoom(rm)}
               onAssignIncident={(inc) => {
                 if (staffList.length > 0) setSelectedStaffId(staffList[0].id);
@@ -637,7 +773,7 @@ export function AdminPortal() {
                                 display: 'inline-block',
                                 marginTop: '4px',
                               }}>
-                                🚨 {rm.incidents.length} Active Incident
+                                {rm.incidents.length} Active Incident
                               </div>
                             )}
 
@@ -653,7 +789,7 @@ export function AdminPortal() {
                                 marginTop: '4px',
                                 marginLeft: hasActiveIncident ? '6px' : '0',
                               }}>
-                                🛎️ Service
+                                Service
                               </div>
                             )}
                           </div>
@@ -691,6 +827,42 @@ export function AdminPortal() {
                       <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: '6px 0' }}>
                         {s.description}
                       </p>
+
+                      {/* Attached Photos / Resolution Proof */}
+                      {s.attachments && s.attachments.length > 0 && (
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          {s.attachments.map((att) => {
+                            const isStaffProof = att.uploadedBy?.role === 'STAFF';
+                            return (
+                              <a
+                                key={att.id || att.storageKey}
+                                href={getMediaUrl(att.storageKey)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  backgroundColor: isStaffProof ? 'rgba(16, 185, 129, 0.12)' : 'rgba(56, 189, 248, 0.12)',
+                                  border: `1px solid ${isStaffProof ? 'rgba(16, 185, 129, 0.4)' : 'rgba(56, 189, 248, 0.4)'}`,
+                                  padding: '3px 8px',
+                                  borderRadius: 'var(--radius-xs)',
+                                  fontSize: '0.74rem',
+                                  color: isStaffProof ? '#6ee7b7' : '#7dd3fc',
+                                  textDecoration: 'none',
+                                }}
+                              >
+                                <img
+                                  src={getMediaUrl(att.storageKey)}
+                                  alt="evidence"
+                                  style={{ width: '22px', height: '22px', borderRadius: '3px', objectFit: 'cover' }}
+                                />
+                                <span>{isStaffProof ? 'Staff Completion Proof' : 'Guest Photo'}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                         Submitted {new Date(s.createdAt).toLocaleTimeString()}
                       </div>
@@ -750,8 +922,9 @@ export function AdminPortal() {
                         </span>
                       </div>
 
-                      <div style={{ fontSize: '0.85rem', color: 'var(--brand-light)', marginTop: '4px' }}>
-                        📍 Location: <strong>{rep.location}</strong>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--brand-light)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPinIcon size={14} color="var(--brand-light)" />
+                        <span>Location: <strong>{rep.location}</strong></span>
                       </div>
 
                       <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginTop: '6px' }}>
@@ -795,7 +968,7 @@ export function AdminPortal() {
                             setReviewAction('ESCALATE');
                           }}
                         >
-                          ⚡ Verify & Escalate to Incident
+                          Verify & Escalate to Incident
                         </button>
                       </div>
                     )}
@@ -817,7 +990,7 @@ export function AdminPortal() {
             Authoritative, immutable event timeline of all triggers, assignments, acknowledgements, and closures.
           </p>
 
-          <div className="card card-elevated" style={{ padding: '0', overflowX: 'auto' }}>
+          <div className="card card-elevated" style={{ padding: '0', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-muted)', textAlign: 'left' }}>
@@ -858,14 +1031,16 @@ export function AdminPortal() {
       {aiBriefModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '620px', maxHeight: '85vh', overflowY: 'auto' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '620px', maxHeight: '88vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--brand-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                ✨ AI Situation Briefing #{aiBriefModal.incident?.id.slice(-6).toUpperCase()}
+                <SparklesIcon size={18} color="var(--brand-light)" />
+                <span>AI Situation Briefing #{aiBriefModal.incident?.id.slice(-6).toUpperCase()}</span>
               </h3>
               <button onClick={() => setAiBriefModal(null)} style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', padding: '4px' }}>
                 ×
@@ -880,15 +1055,16 @@ export function AdminPortal() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Verified Facts */}
                 <div style={{
-                  backgroundColor: 'var(--bg-app)',
-                  padding: '14px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                  padding: '14px 16px',
                   borderRadius: 'var(--radius-sm)',
-                  borderLeft: '3px solid var(--color-success)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-success)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                    ✅ Verified Facts
+                  <div style={{ fontWeight: 700, fontSize: '0.80rem', color: '#6ee7b7', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircleIcon size={15} color="#10b981" />
+                    <span>Verified Incident Facts</span>
                   </div>
-                  <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                  <ul style={{ paddingLeft: '18px', fontSize: '0.84rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
                     {aiBriefModal.summary.verifiedFacts.map((fact, idx) => (
                       <li key={idx}>{fact}</li>
                     ))}
@@ -897,15 +1073,16 @@ export function AdminPortal() {
 
                 {/* Unresolved Questions */}
                 <div style={{
-                  backgroundColor: 'var(--bg-app)',
-                  padding: '14px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                  padding: '14px 16px',
                   borderRadius: 'var(--radius-sm)',
-                  borderLeft: '3px solid var(--color-critical)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-critical)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                    ❓ Unresolved Questions & Risks
+                  <div style={{ fontWeight: 700, fontSize: '0.80rem', color: '#fca5a5', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <AlertTriangleIcon size={15} color="#ef4444" />
+                    <span>Unresolved Questions & Risk Exposure</span>
                   </div>
-                  <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                  <ul style={{ paddingLeft: '18px', fontSize: '0.84rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
                     {aiBriefModal.summary.unresolvedQuestions.map((q, idx) => (
                       <li key={idx}>{q}</li>
                     ))}
@@ -914,15 +1091,16 @@ export function AdminPortal() {
 
                 {/* Recommended Next Actions */}
                 <div style={{
-                  backgroundColor: 'var(--bg-app)',
-                  padding: '14px',
+                  backgroundColor: 'rgba(245, 158, 11, 0.05)',
+                  padding: '14px 16px',
                   borderRadius: 'var(--radius-sm)',
-                  borderLeft: '3px solid var(--brand-light)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--brand-light)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                    ⚡ Recommended Next Operator Actions
+                  <div style={{ fontWeight: 700, fontSize: '0.80rem', color: '#fde047', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldAlertIcon size={15} color="#f59e0b" />
+                    <span>Recommended Operator Protocol</span>
                   </div>
-                  <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                  <ul style={{ paddingLeft: '18px', fontSize: '0.84rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
                     {aiBriefModal.summary.recommendedActions.map((act, idx) => (
                       <li key={idx}>{act}</li>
                     ))}
@@ -931,7 +1109,7 @@ export function AdminPortal() {
 
                 {/* Disclaimer */}
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
-                  ⚠️ {aiBriefModal.summary.disclaimer}
+                  <strong>Disclaimer:</strong> {aiBriefModal.summary.disclaimer}
                 </div>
               </div>
             )}
@@ -947,13 +1125,14 @@ export function AdminPortal() {
       {reviewReportModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '480px' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '480px', maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: reviewAction === 'ESCALATE' ? 'var(--color-critical)' : 'var(--text-secondary)' }}>
-              {reviewAction === 'ESCALATE' ? '⚡ Verify & Escalate Report' : 'Dismiss Public Report'}
+              {reviewAction === 'ESCALATE' ? 'Verify & Escalate Report' : 'Dismiss Public Report'}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
               Ref: <strong>{reviewReportModal.reference}</strong> ({reviewReportModal.category}) at {reviewReportModal.location}
@@ -989,11 +1168,12 @@ export function AdminPortal() {
       {selectedRoom && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '520px' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '520px', maxHeight: '88vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--brand-light)' }}>
                 Room {selectedRoom.roomNumber} Overview
@@ -1047,11 +1227,12 @@ export function AdminPortal() {
       {assignModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '480px' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '480px', maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: 'var(--brand-light)' }}>
               Assign Responder to #{assignModal.id.slice(-6).toUpperCase()}
             </h3>
@@ -1100,11 +1281,12 @@ export function AdminPortal() {
       {assignServiceModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '440px' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '440px', maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: 'var(--brand-light)' }}>
               Assign Service Request
             </h3>
@@ -1134,14 +1316,65 @@ export function AdminPortal() {
       {closeModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '480px' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '480px', maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: 'var(--color-success)' }}>
               Verify & Close Incident
             </h3>
+
+            {/* Visual Inspection of Attached Photos / Staff Proof */}
+            {closeModal.attachments && closeModal.attachments.length > 0 && (
+              <div style={{
+                backgroundColor: 'var(--bg-app)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '10px 12px',
+                marginBottom: '16px',
+              }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Attached Evidence & Staff Proof of Completion
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {closeModal.attachments.map((att) => {
+                    const isStaffProof = att.uploadedBy?.role === 'STAFF';
+                    return (
+                      <a
+                        key={att.id || att.storageKey}
+                        href={getMediaUrl(att.storageKey)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          backgroundColor: isStaffProof ? 'rgba(16, 185, 129, 0.15)' : 'rgba(56, 189, 248, 0.12)',
+                          border: `1px solid ${isStaffProof ? '#10b981' : '#38bdf8'}`,
+                          borderRadius: 'var(--radius-xs)',
+                          padding: '6px 10px',
+                          textDecoration: 'none',
+                          color: isStaffProof ? '#6ee7b7' : '#7dd3fc',
+                          fontSize: '0.78rem',
+                        }}
+                      >
+                        <img
+                          src={getMediaUrl(att.storageKey)}
+                          alt="proof"
+                          style={{ width: '32px', height: '32px', borderRadius: '3px', objectFit: 'cover' }}
+                        />
+                        <div>
+                          <strong>{isStaffProof ? 'Staff Completion Proof' : 'Guest Photo'}</strong>
+                          <div style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>Tap to inspect full image</div>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Resolution / Outcome Note</label>
@@ -1203,11 +1436,12 @@ export function AdminPortal() {
       {escalateModal && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 200, padding: '20px',
+          zIndex: 200, padding: 'clamp(10px, 3vw, 20px)',
+          backdropFilter: 'blur(4px)',
         }}>
-          <div className="card card-elevated" style={{ width: '100%', maxWidth: '440px' }}>
+          <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '440px', maxHeight: '88vh', overflowY: 'auto' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: 'var(--color-critical)' }}>
               Escalate Incident Priority
             </h3>

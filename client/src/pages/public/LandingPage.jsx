@@ -1,114 +1,153 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { ShieldAlertIcon, RadioIcon, MapPinIcon, MegaphoneIcon, ChevronRightIcon } from '../../components/common/Icons';
 
 export function LandingPage() {
   const { user } = useAuth();
 
   return (
-    <div className="container" style={{ maxWidth: '960px', padding: '40px 20px 80px 20px' }}>
-      {/* Hero */}
-      <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-        <div style={{
-          display: 'inline-block',
-          padding: '4px 14px',
-          borderRadius: 'var(--radius-full)',
-          backgroundColor: 'var(--brand-muted)',
-          color: 'var(--brand-light)',
-          fontSize: '0.8rem',
-          fontWeight: 700,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          marginBottom: '14px',
-        }}>
-          SDG 11 • Sustainable Cities & Safe Communities
-        </div>
+    <div className="container" style={{ maxWidth: '1040px', padding: 'clamp(28px, 6vh, 56px) 16px clamp(40px, 8vh, 80px) 16px' }}>
+      {/* Hero Section */}
+      <div style={{ maxWidth: '780px', marginBottom: 'clamp(32px, 6vh, 56px)' }}>
         <h1 style={{
-          fontSize: '2.8rem',
-          fontWeight: 900,
-          letterSpacing: '-0.02em',
+          fontSize: 'clamp(1.85rem, 5.5vw, 3.0rem)',
+          fontWeight: 800,
+          letterSpacing: '-0.025em',
           color: 'var(--text-primary)',
           lineHeight: 1.15,
-          marginBottom: '14px',
+          marginBottom: '16px',
         }}>
-          ATHITHI
+          Real-Time Hospitality Crisis Coordination & Safety Console
         </h1>
+
         <p style={{
-          fontSize: '1.25rem',
-          color: 'var(--brand-light)',
-          fontWeight: 600,
-          marginBottom: '12px',
-        }}>
-          Athithi Devo Bhava. Their safety, our responsibility.
-        </p>
-        <p style={{
-          fontSize: '1rem',
+          fontSize: 'clamp(0.95rem, 3.2vw, 1.15rem)',
           color: 'var(--text-secondary)',
-          maxWidth: '620px',
-          margin: '0 auto 28px auto',
           lineHeight: 1.6,
+          marginBottom: '28px',
         }}>
-          A unified, real-time crisis coordination and hospitality service platform connecting hotel guests, first-responder staff, and control room command.
+          Athithi connects hotel guests, first-responder staff, and centralized control command through an interactive 2D architectural blueprint, low-latency WebSocket dispatch, and auditable incident tracking.
         </p>
 
-        <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {user ? (
             <Link
               to={user.role === 'GUEST' ? '/guest' : user.role === 'STAFF' ? '/staff' : '/admin'}
               className="btn btn-primary"
-              style={{ padding: '12px 28px', fontSize: '1rem' }}
+              style={{ padding: '12px 24px', fontSize: '0.95rem', minHeight: '44px' }}
             >
-              Go to Your {user.role} Portal →
+              Open Your {user.role === 'ADMIN' ? 'Command Console' : user.role === 'STAFF' ? 'Staff Inbox' : 'Guest Portal'}
+              <ChevronRightIcon size={16} />
             </Link>
           ) : (
-            <Link to="/login" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '1rem' }}>
-              Launch Live Demo / Sign In
+            <Link to="/login" className="btn btn-primary" style={{ padding: '12px 24px', fontSize: '0.95rem', minHeight: '44px' }}>
+              Launch Operations Demo
+              <ChevronRightIcon size={16} />
             </Link>
           )}
 
-          <Link to="/report-incident" className="btn btn-secondary" style={{ padding: '12px 24px', fontSize: '1rem' }}>
-            Public Hazard Reporting →
+          <Link
+            to="/report-incident"
+            className="btn btn-secondary"
+            style={{ padding: '12px 20px', fontSize: '0.95rem', minHeight: '44px' }}
+          >
+            Public Hazard Reporting
           </Link>
         </div>
       </div>
 
-      {/* 4 Pillars Grid */}
+      {/* Structural Capabilities Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '20px',
-        marginBottom: '50px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+        gap: '16px',
+        marginBottom: '48px',
       }}>
-        <div className="card card-elevated">
-          <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>🚨</div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Guest SOS</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Instant, friction-free emergency reporting. Directly notifies dispatch without waiting for reception phone pickups.
+        <div className="card card-elevated" style={{ padding: '24px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-critical)',
+            marginBottom: '16px',
+          }}>
+            <ShieldAlertIcon size={20} />
+          </div>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
+            Frictionless Guest SOS
+          </h2>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            One-touch emergency activation with automatic room association, high-precision property geolocation, and contextual area clarification.
           </p>
         </div>
 
-        <div className="card card-elevated">
-          <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>📡</div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Control Room</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Live incident queue, room overview, staff dispatch, and verified closure with external emergency service logs.
+        <div className="card card-elevated" style={{ padding: '24px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-low)',
+            marginBottom: '16px',
+          }}>
+            <MapPinIcon size={20} />
+          </div>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
+            2D Architectural Blueprint
+          </h2>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            Scalable multi-floor SVG CAD floor plan with live radar pulse markers, room booking inspection, and an unlocated report staging shelf.
           </p>
         </div>
 
-        <div className="card card-elevated">
-          <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>⚡</div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Staff Dispatch</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Actionable task inbox for security and maintenance responders. Mandatory acknowledgements and progress milestones.
+        <div className="card card-elevated" style={{ padding: '24px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'rgba(245, 158, 11, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--brand-light)',
+            marginBottom: '16px',
+          }}>
+            <RadioIcon size={20} />
+          </div>
+          <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
+            Sub-Second Dispatch Dispatch
+          </h2>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+            Dual-auth token architecture over Socket.IO delivering zero-latency updates to on-duty security, facilities, and housekeeping staff.
           </p>
         </div>
+      </div>
 
-        <div className="card card-elevated">
-          <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>🌐</div>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '6px' }}>Public Reporting</h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            Safe perimeter and public hazard channel. Bystanders report threats without access to private hotel or guest records.
-          </p>
+      {/* Safety Notice Footer */}
+      <div style={{
+        padding: '16px 20px',
+        borderRadius: 'var(--radius-sm)',
+        backgroundColor: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+      }}>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Grand Athithi Hotel • Internal Safety & Facilities Command System
+        </div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+          STANDARDS COMPLIANCE: UN SDG 11
         </div>
       </div>
     </div>

@@ -10,12 +10,16 @@ export const sosSchema = z.object({
     'STRUCTURAL_HAZARD',
     'OTHER',
   ]).optional().default('OTHER'),
+  priority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional().default('CRITICAL'),
   description: z.string().optional().default('EMERGENCY SOS ACTIVATED'),
   coordinates: z.object({
     latitude: z.number(),
     longitude: z.number(),
     accuracy: z.number().optional(),
   }).nullable().optional(),
+  photoUrl: z.string().optional(),
+  contentType: z.string().optional(),
+  fileSize: z.number().optional(),
 });
 
 export const createIncidentSchema = z.object({
@@ -30,6 +34,9 @@ export const createIncidentSchema = z.object({
   ]),
   description: z.string().min(1, 'Description is required'),
   priority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional().default('HIGH'),
+  photoUrl: z.string().optional(),
+  contentType: z.string().optional(),
+  fileSize: z.number().optional(),
 });
 
 export const updateIncidentSchema = z.object({

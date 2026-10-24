@@ -28,6 +28,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Uploads
+server/uploads/*
+!server/uploads/.gitkeep
+
 # Local agent harnesses
 .gemini/
 .claude/

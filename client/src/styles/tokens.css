@@ -1,52 +1,60 @@
 :root {
-  /* Color Palette — Hospitality Dark Theme */
-  --bg-app: #080c14;
-  --bg-surface: #0f1726;
-  --bg-surface-elevated: #162032;
-  --bg-surface-active: #1d2b42;
+  /* Color Palette — Command Obsidian & Warm Hospitality Gold */
+  --bg-app: #06090e;
+  --bg-surface: #0b111a;
+  --bg-surface-elevated: #111a28;
+  --bg-surface-active: #172438;
+  --bg-surface-subtle: #0d1522;
 
-  --border-subtle: #1e293b;
-  --border-muted: #2d3d56;
-  --border-highlight: #3b82f6;
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-muted: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.20);
+  --border-highlight: #38bdf8;
 
-  /* Brand Hospitality Gold */
+  /* Brand Hospitality Gold — Restrained & Precision-tuned */
   --brand-primary: #d97706;
   --brand-light: #fbbf24;
-  --brand-muted: rgba(245, 158, 11, 0.15);
+  --brand-muted: rgba(245, 158, 11, 0.12);
+  --brand-border: rgba(245, 158, 11, 0.28);
 
   /* Status Colors */
   --color-critical: #ef4444;
-  --color-critical-bg: rgba(239, 68, 68, 0.12);
-  --color-critical-border: rgba(239, 68, 68, 0.4);
+  --color-critical-bg: rgba(239, 68, 68, 0.10);
+  --color-critical-border: rgba(239, 68, 68, 0.32);
 
   --color-high: #f97316;
-  --color-high-bg: rgba(249, 115, 22, 0.12);
+  --color-high-bg: rgba(249, 115, 22, 0.10);
+  --color-high-border: rgba(249, 115, 22, 0.28);
 
   --color-medium: #eab308;
-  --color-medium-bg: rgba(234, 179, 8, 0.12);
+  --color-medium-bg: rgba(234, 179, 8, 0.10);
+  --color-medium-border: rgba(234, 179, 8, 0.28);
 
   --color-low: #38bdf8;
-  --color-low-bg: rgba(56, 189, 248, 0.12);
+  --color-low-bg: rgba(56, 189, 248, 0.10);
+  --color-low-border: rgba(56, 189, 248, 0.28);
 
   --color-success: #10b981;
-  --color-success-bg: rgba(16, 185, 129, 0.12);
+  --color-success-bg: rgba(16, 185, 129, 0.10);
+  --color-success-border: rgba(16, 185, 129, 0.28);
 
   /* Typography */
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  --text-inverse: #0f172a;
+  --text-inverse: #06090e;
 
-  /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
-  --shadow-sos: 0 0 35px rgba(239, 68, 68, 0.45);
+  /* Depth & Shadows — Soft, Multi-stop Realistic Ambient Occlusion */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.40), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.30);
+  --shadow-sos: 0 0 35px rgba(239, 68, 68, 0.35), 0 4px 12px rgba(0, 0, 0, 0.5);
 
   /* Radius */
+  --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-full: 9999px;
 
   /* Spacing */
@@ -57,7 +65,7 @@
   --space-xl: 32px;
   --space-2xl: 48px;
 
-  /* Font */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Typography Stacks */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

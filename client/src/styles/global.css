@@ -6,13 +6,53 @@
   padding: 0;
 }
 
+/* Browser Surfaces Theming */
+::selection {
+  background-color: rgba(251, 191, 36, 0.25);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background-color: rgba(251, 191, 36, 0.25);
+  color: #ffffff;
+}
+
 html, body {
-  height: 100%;
+  min-height: 100%;
   background-color: var(--bg-app);
   color: var(--text-primary);
   font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  caret-color: var(--brand-light);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) var(--bg-surface);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 #root {
@@ -35,26 +75,38 @@ button {
 
 input, select, textarea {
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
-/* Base button styles */
+/* Universal Focus Rings */
+:focus-visible {
+  outline: 2px solid var(--border-highlight);
+  outline-offset: 2px;
+}
+
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  padding: 10px 18px;
-  border-radius: var(--radius-md);
-  font-size: 0.95rem;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
   font-weight: 600;
-  transition: all 0.15s ease;
-  min-height: 42px;
+  line-height: 1;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  min-height: 38px;
+  white-space: nowrap;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .btn-primary {
   background-color: var(--brand-primary);
   color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 .btn-primary:hover {
   background-color: #b45309;
@@ -63,7 +115,7 @@ input, select, textarea {
 .btn-critical {
   background-color: var(--color-critical);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 .btn-critical:hover {
   background-color: #dc2626;
@@ -76,104 +128,241 @@ input, select, textarea {
 }
 .btn-secondary:hover {
   background-color: var(--bg-surface-active);
-  border-color: var(--border-highlight);
+  border-color: var(--border-strong);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover {
+  background: var(--bg-surface-active);
+  color: var(--text-primary);
 }
 
 .btn-sm {
   padding: 6px 12px;
-  font-size: 0.85rem;
-  min-height: 32px;
+  font-size: 0.82rem;
+  min-height: 30px;
 }
 
-/* Badges */
+/* Badges & Status Pills */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-family: var(--font-mono);
+  line-height: 1.2;
 }
 
 .badge-critical {
   background-color: var(--color-critical-bg);
-  color: var(--color-critical);
+  color: #fca5a5;
   border: 1px solid var(--color-critical-border);
 }
 
 .badge-high {
   background-color: var(--color-high-bg);
-  color: var(--color-high);
+  color: #fdba74;
+  border: 1px solid var(--color-high-border);
 }
 
 .badge-medium {
   background-color: var(--color-medium-bg);
-  color: var(--color-medium);
+  color: #fde047;
+  border: 1px solid var(--color-medium-border);
 }
 
 .badge-low {
   background-color: var(--color-low-bg);
-  color: var(--color-low);
+  color: #7dd3fc;
+  border: 1px solid var(--color-low-border);
 }
 
 .badge-success {
   background-color: var(--color-success-bg);
-  color: var(--color-success);
+  color: #6ee7b7;
+  border: 1px solid var(--color-success-border);
 }
 
-/* Cards */
+.badge-neutral {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Surface Containers */
 .card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
   box-shadow: var(--shadow-sm);
 }
 
 .card-elevated {
   background-color: var(--bg-surface-elevated);
-  border-color: var(--border-muted);
+  border: 1px solid var(--border-muted);
   box-shadow: var(--shadow-md);
 }
 
-/* Form inputs */
+/* Forms */
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 6px;
   margin-bottom: var(--space-md);
 }
 
 .form-label {
-  font-size: 0.85rem;
+  font-size: 0.80rem;
   font-weight: 600;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .form-input, .form-select, .form-textarea {
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-muted);
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: var(--brand-light);
-  box-shadow: 0 0 0 2px var(--brand-muted);
+  border-color: var(--border-highlight);
+  background-color: var(--bg-surface-active);
 }
 
-/* Responsive layout helper */
+.form-input::placeholder, .form-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* Layout Container */
 .container {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: var(--space-md);
+  padding: 0 var(--space-md);
+}
+
+/* Telemetry Strip */
+.telemetry-strip {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.telemetry-item {
+  flex: 1;
+  min-width: 170px;
+  padding: 12px 18px;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.telemetry-item:last-child {
+  border-right: none;
+}
+
+.telemetry-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telemetry-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+/* Micro pulse dot */
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pulse-dot-critical {
+  background-color: var(--color-critical);
+  box-shadow: 0 0 8px var(--color-critical);
+}
+
+.pulse-dot-success {
+  background-color: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+}
+
+/* Mobile Responsiveness Enhancements */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  /* Prevent iOS Safari auto-zoom on form controls */
+  input, select, textarea, .form-input, .form-select, .form-textarea {
+    font-size: 16px !important;
+  }
+
+  .btn {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .btn-sm {
+    min-height: 32px;
+    padding: 4px 8px;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  .telemetry-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .telemetry-item {
+    min-width: 135px;
+    padding: 10px 12px;
+  }
+
+  /* Responsive utility classes */
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .full-width-mobile {
+    width: 100% !important;
+  }
+
+  .modal-mobile-fit {
+    max-height: 88vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 14px !important;
+  }
 }

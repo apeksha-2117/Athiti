@@ -7,6 +7,8 @@ import pg from 'pg';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
+import path from 'path';
+import { uploadRouter } from './modules/upload/upload.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { incidentRouter, adminIncidentRouter } from './modules/incidents/incident.routes.js';
 import { assignmentRouter, adminAssignmentRouter } from './modules/assignments/assignment.routes.js';
@@ -41,8 +43,12 @@ export function createApp() {
   // Trust Render / cloud reverse proxy for secure cookies and IP forwarding
   app.set('trust proxy', 1);
 
-  // ── Security headers
-  app.use(helmet());
+  // ── Security headers with cross-origin image support for client preview
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    })
+  );
 
   // ── CORS (supports Vercel, Render, and local development)
   const corsOptions = {
@@ -56,8 +62,11 @@ export function createApp() {
   app.use(cors(corsOptions));
 
   // ── Body parsing
-  app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: '12mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '12mb' }));
+
+  // ── Serve uploaded photos statically
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // ── Session
   const sessionMiddleware = session({
@@ -92,6 +101,7 @@ export function createApp() {
   app.use('/api/public/reports', publicReportRouter);
   app.use('/api/admin/public-reports', adminPublicReportRouter);
   app.use('/api/admin', auditRouter);
+  app.use('/api/upload', uploadRouter);
 
   // ── Start background escalation engine
   startEscalationChecker();

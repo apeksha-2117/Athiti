@@ -8,10 +8,38 @@ import {
   updateAssignmentStatusSchema,
 } from './assignment.schema.js';
 import * as assignmentService from './assignment.service.js';
+import { getActiveStaffPositions, setStaffPosition } from '../../realtime/socket.js';
+import { getIO } from '../../realtime/emitter.js';
 
 export const assignmentRouter = Router();
 
 assignmentRouter.use(authenticate);
+
+// GET /api/staff/locations (Active staff positions)
+assignmentRouter.get('/locations', async (_req, res) => {
+  res.json({ positions: getActiveStaffPositions() });
+});
+
+// POST /api/staff/location (Staff update patrol location)
+assignmentRouter.post('/location', authorize('STAFF'), async (req, res) => {
+  const { floor = 1, x = 500, y = 310, sector = 'Patrol Sector' } = req.body;
+  const updated = setStaffPosition(req.user.id, {
+    staffId: req.user.id,
+    email: req.user.email,
+    name: req.user.name,
+    floor,
+    x,
+    y,
+    sector,
+  });
+
+  const io = getIO();
+  if (io) {
+    io.emit('staff:positions', getActiveStaffPositions());
+  }
+
+  res.json({ position: updated });
+});
 
 // GET /api/staff/tasks (Staff tasks)
 assignmentRouter.get('/tasks', authorize('STAFF'), async (req, res, next) => {
@@ -65,6 +93,11 @@ adminAssignmentRouter.get('/staff', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// GET /api/admin/staff/locations (Active staff positions)
+adminAssignmentRouter.get('/staff/locations', async (_req, res) => {
+  res.json({ positions: getActiveStaffPositions() });
 });
 
 // POST /api/admin/incidents/:id/assign

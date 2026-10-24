@@ -31,12 +31,24 @@ export async function createServiceRequest(user, data) {
       },
     });
 
+    if (data.photoUrl) {
+      await tx.attachment.create({
+        data: {
+          serviceRequestId: newReq.id,
+          uploadedById: user.id,
+          storageKey: data.photoUrl,
+          contentType: data.contentType || 'image/jpeg',
+          fileSize: data.fileSize || 0,
+        },
+      });
+    }
+
     await tx.serviceRequestEvent.create({
       data: {
         serviceRequestId: newReq.id,
         actorId: user.id,
         eventType: 'REQUEST_SUBMITTED',
-        description: `Routine service request submitted: ${data.category}`,
+        description: `Routine service request submitted: ${data.category}${data.photoUrl ? ' [Photo Attached]' : ''}`,
       },
     });
 
@@ -46,11 +58,20 @@ export async function createServiceRequest(user, data) {
         action: 'SERVICE_REQUEST_CREATED',
         entityType: 'SERVICE_REQUEST',
         entityId: newReq.id,
-        changeSummary: { category: data.category, room: newReq.room?.roomNumber },
+        changeSummary: { category: data.category, room: newReq.room?.roomNumber, photoUrl: data.photoUrl || undefined },
       },
     });
 
-    return newReq;
+    return tx.serviceRequest.findUnique({
+      where: { id: newReq.id },
+      include: {
+        room: true,
+        attachments: {
+          include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
   });
 
   emitToHotel(req.hotelId, 'service_request:created', req);
@@ -65,6 +86,10 @@ export async function getGuestServiceRequests(guestId) {
     where: { guestId },
     include: {
       room: true,
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      },
       assignments: {
         include: {
           assignee: { select: { id: true, name: true } },
@@ -82,6 +107,10 @@ export async function getAdminServiceRequests(hotelId) {
     where,
     include: {
       room: true,
+      attachments: {
+        include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+      },
       assignments: {
         include: {
           assignee: { select: { id: true, name: true, role: true } },

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { ShieldAlertIcon, UserIcon, BedIcon, WrenchIcon } from '../../components/common/Icons';
 
-const DEMO_ACCOUNTS = [
-  { label: 'Admin (Control Room)', email: 'admin@athithi.demo', role: 'ADMIN' },
-  { label: 'Staff (Security)', email: 'staff.security@athithi.demo', role: 'STAFF' },
-  { label: 'Staff (Maintenance)', email: 'staff.maintenance@athithi.demo', role: 'STAFF' },
-  { label: 'Guest (Room 101)', email: 'guest.ananya@athithi.demo', role: 'GUEST' },
-  { label: 'Guest (Room 201)', email: 'guest.vikram@athithi.demo', role: 'GUEST' },
+const DEMO_PRESETS = [
+  { label: 'Hotel Command Admin', sub: 'Priya Sharma • Central Control', email: 'admin@athithi.demo', role: 'ADMIN', icon: ShieldAlertIcon },
+  { label: 'Guest — Room 101', sub: 'Ananya Iyer • Active Stay Floor 1', email: 'guest.ananya@athithi.demo', role: 'GUEST', icon: BedIcon },
+  { label: 'Guest — Room 201', sub: 'Vikram Patel • Active Stay Floor 2', email: 'guest.vikram@athithi.demo', role: 'GUEST', icon: BedIcon },
+  { label: 'Security Dispatch', sub: 'Arjun Nair • First Response On-Duty', email: 'staff.security@athithi.demo', role: 'STAFF', icon: UserIcon },
+  { label: 'Facilities Staff', sub: 'Kavya Reddy • Maintenance Team', email: 'staff.maintenance@athithi.demo', role: 'STAFF', icon: WrenchIcon },
 ];
 
 export function LoginPage() {
@@ -35,78 +36,119 @@ export function LoginPage() {
     }
   };
 
-  const selectDemoUser = (demoEmail) => {
-    setEmail(demoEmail);
+  const selectPreset = (presetEmail) => {
+    setEmail(presetEmail);
     setPassword('Demo1234!');
     setError('');
   };
 
   return (
     <div style={{
-      maxWidth: '460px',
-      margin: '60px auto',
-      padding: '0 20px',
+      maxWidth: '480px',
+      margin: 'clamp(20px, 4vh, 48px) auto',
+      padding: '0 14px',
       width: '100%',
     }}>
-      <div className="card card-elevated" style={{ padding: '36px 32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <h1 style={{
-            fontSize: '1.8rem',
-            fontWeight: 800,
+      <div className="card card-elevated" style={{ padding: 'clamp(20px, 4vw, 32px) clamp(16px, 4vw, 26px)' }}>
+        <div style={{ marginBottom: '22px' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
             color: 'var(--brand-light)',
-            letterSpacing: '0.04em',
             marginBottom: '6px',
           }}>
-            ATHITHI
-          </h1>
-          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-            Hospitality Crisis & Service Coordination
-          </p>
-          <div style={{
-            marginTop: '8px',
-            fontSize: '0.78rem',
-            color: 'var(--text-muted)',
-            fontStyle: 'italic',
-          }}>
-            “Athithi Devo Bhava — Their safety, our responsibility”
+            <ShieldAlertIcon size={20} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.08em' }}>ATHITHI</span>
           </div>
+          <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.45rem)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            Operations & Guest Sign In
+          </h1>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            Grand Athithi Hotel • Hospitality Crisis & Service Network
+          </p>
         </div>
 
-        {/* Quick Demo Selector */}
+        {/* Demo Preset Selector */}
         <div style={{
-          backgroundColor: 'var(--bg-app)',
-          padding: '12px',
-          borderRadius: 'var(--radius-md)',
-          marginBottom: '24px',
+          backgroundColor: 'var(--bg-surface-subtle)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '12px 10px',
+          marginBottom: '20px',
           border: '1px solid var(--border-subtle)',
         }}>
           <div style={{
-            fontSize: '0.75rem',
+            fontSize: '0.70rem',
             fontWeight: 700,
+            letterSpacing: '0.06em',
             textTransform: 'uppercase',
-            color: 'var(--brand-light)',
+            color: 'var(--text-secondary)',
             marginBottom: '8px',
           }}>
-            ⚡ 1-Tap Demo Switcher
+            Demo Preset Selector
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => selectDemoUser(acc.email)}
-                style={{
-                  fontSize: '0.75rem',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  backgroundColor: email === acc.email ? 'var(--brand-primary)' : 'var(--bg-surface-elevated)',
-                  color: email === acc.email ? '#ffffff' : 'var(--text-secondary)',
-                  border: '1px solid var(--border-muted)',
-                }}
-              >
-                {acc.label}
-              </button>
-            ))}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {DEMO_PRESETS.map((p) => {
+              const Icon = p.icon;
+              const isSelected = email === p.email;
+              return (
+                <button
+                  key={p.email}
+                  type="button"
+                  onClick={() => selectPreset(p.email)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '9px 10px',
+                    minHeight: '44px',
+                    borderRadius: 'var(--radius-xs)',
+                    backgroundColor: isSelected ? 'var(--bg-surface-active)' : 'transparent',
+                    border: `1px solid ${isSelected ? 'var(--brand-primary)' : 'transparent'}`,
+                    transition: 'all 0.12s ease',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1, marginRight: '8px' }}>
+                    <div style={{
+                      color: isSelected ? 'var(--brand-light)' : 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <Icon size={16} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '0.80rem',
+                        fontWeight: 600,
+                        color: isSelected ? '#ffffff' : 'var(--text-primary)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {p.label}
+                      </div>
+                      <div style={{
+                        fontSize: '0.70rem',
+                        color: 'var(--text-muted)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {p.sub}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`badge ${p.role === 'ADMIN' ? 'badge-critical' : p.role === 'STAFF' ? 'badge-high' : 'badge-neutral'}`} style={{ fontSize: '0.65rem', flexShrink: 0 }}>
+                    {p.role}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -114,10 +156,10 @@ export function LoginPage() {
           <div style={{
             backgroundColor: 'var(--color-critical-bg)',
             border: '1px solid var(--color-critical-border)',
-            color: 'var(--color-critical)',
+            color: '#fca5a5',
             padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            fontSize: '0.85rem',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.82rem',
             marginBottom: '18px',
           }}>
             {error}
@@ -136,7 +178,7 @@ export function LoginPage() {
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: '24px' }}>
+          <div className="form-group" style={{ marginBottom: '22px' }}>
             <label className="form-label">Password</label>
             <input
               type="password"
@@ -151,9 +193,9 @@ export function LoginPage() {
             type="submit"
             className="btn btn-primary"
             disabled={loading}
-            style={{ width: '100%', fontSize: '1rem', padding: '12px' }}
+            style={{ width: '100%', minHeight: '44px', fontSize: '0.92rem', padding: '12px' }}
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Authenticating Credentials...' : 'Authenticate'}
           </button>
         </form>
       </div>

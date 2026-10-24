@@ -117,11 +117,23 @@ export async function getStaffTasks(staffId) {
         include: {
           room: true,
           reporter: { select: { id: true, name: true, email: true } },
+          attachments: {
+            include: {
+              uploadedBy: { select: { id: true, name: true, role: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
       },
       serviceRequest: {
         include: {
           room: true,
+          attachments: {
+            include: {
+              uploadedBy: { select: { id: true, name: true, role: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
       },
     },
@@ -265,7 +277,7 @@ export async function declineAssignment(assignmentId, staffId, reason) {
   return updated;
 }
 
-export async function updateAssignmentStatus(assignmentId, staffId, { status, notes }) {
+export async function updateAssignmentStatus(assignmentId, staffId, { status, notes, photoProofUrl, contentType, fileSize }) {
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId },
     include: { incident: true, serviceRequest: true },
@@ -293,8 +305,23 @@ export async function updateAssignmentStatus(assignmentId, staffId, { status, no
       include: {
         assignee: { select: { id: true, name: true } },
         incident: { include: { room: true } },
+        serviceRequest: { include: { room: true } },
       },
     });
+
+    // If photo proof is provided (especially on completion), persist Attachment
+    if (photoProofUrl) {
+      await tx.attachment.create({
+        data: {
+          incidentId: asgn.incidentId || undefined,
+          serviceRequestId: asgn.serviceRequestId || undefined,
+          uploadedById: staffId,
+          storageKey: photoProofUrl,
+          contentType: contentType || 'image/jpeg',
+          fileSize: fileSize || 0,
+        },
+      });
+    }
 
     // Map assignment status to incident status
     if (asgn.incidentId) {
@@ -314,8 +341,33 @@ export async function updateAssignmentStatus(assignmentId, staffId, { status, no
         data: {
           incidentId: asgn.incidentId,
           actorId: staffId,
-          eventType: status,
-          description: `Status updated to ${status}${notes ? `: "${notes}"` : ''}`,
+          eventType: status === 'COMPLETED' && photoProofUrl ? 'COMPLETED_WITH_PHOTO_PROOF' : status,
+          description: `Status updated to ${status}${notes ? `: "${notes}"` : ''}${photoProofUrl ? ' [Photo Proof Verified]' : ''}`,
+          metadata: photoProofUrl ? { photoProofUrl } : undefined,
+        },
+      });
+    }
+
+    // Map assignment status to routine service request status
+    if (asgn.serviceRequestId) {
+      let targetServiceStatus = 'IN_PROGRESS';
+      if (status === 'COMPLETED') targetServiceStatus = 'RESOLVED';
+      else if (status === 'EN_ROUTE' || status === 'ON_SCENE') targetServiceStatus = 'IN_PROGRESS';
+
+      await tx.serviceRequest.update({
+        where: { id: asgn.serviceRequestId },
+        data: {
+          status: targetServiceStatus,
+          resolvedAt: status === 'COMPLETED' ? new Date() : undefined,
+        },
+      });
+
+      await tx.serviceRequestEvent.create({
+        data: {
+          serviceRequestId: asgn.serviceRequestId,
+          actorId: staffId,
+          eventType: status === 'COMPLETED' && photoProofUrl ? 'COMPLETED_WITH_PHOTO_PROOF' : status,
+          description: `Service status updated to ${status}${notes ? `: "${notes}"` : ''}${photoProofUrl ? ' [Photo Proof Verified]' : ''}`,
         },
       });
     }
@@ -326,7 +378,7 @@ export async function updateAssignmentStatus(assignmentId, staffId, { status, no
         action: `ASSIGNMENT_${status}`,
         entityType: 'ASSIGNMENT',
         entityId: assignmentId,
-        changeSummary: { status, notes },
+        changeSummary: { status, notes, photoProofUrl: photoProofUrl || undefined },
       },
     });
 
@@ -338,6 +390,14 @@ export async function updateAssignmentStatus(assignmentId, staffId, { status, no
     emitToRole('ADMIN', 'assignment:updated', updated);
     if (updated.incident.reporterId) {
       emitToUser(updated.incident.reporterId, 'incident:updated', updated.incident);
+    }
+  }
+
+  if (updated.serviceRequest) {
+    emitToHotel(updated.serviceRequest.hotelId, 'service_request:updated', updated.serviceRequest);
+    emitToRole('ADMIN', 'service_request:updated', updated.serviceRequest);
+    if (updated.serviceRequest.guestId) {
+      emitToUser(updated.serviceRequest.guestId, 'service_request:updated', updated.serviceRequest);
     }
   }
 
