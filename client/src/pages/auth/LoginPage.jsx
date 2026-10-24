@@ -7,8 +7,7 @@ const DEMO_PRESETS = [
   { label: 'Hotel Command Admin', sub: 'Priya Sharma • Central Control', email: 'admin@athithi.demo', role: 'ADMIN', icon: ShieldAlertIcon },
   { label: 'Guest — Room 101', sub: 'Ananya Iyer • Active Stay Floor 1', email: 'guest.ananya@athithi.demo', role: 'GUEST', icon: BedIcon },
   { label: 'Guest — Room 201', sub: 'Vikram Patel • Active Stay Floor 2', email: 'guest.vikram@athithi.demo', role: 'GUEST', icon: BedIcon },
-  { label: 'Security Dispatch', sub: 'Arjun Nair • First Response On-Duty', email: 'staff.security@athithi.demo', role: 'STAFF', icon: UserIcon },
-  { label: 'Facilities Staff', sub: 'Kavya Reddy • Maintenance Team', email: 'staff.maintenance@athithi.demo', role: 'STAFF', icon: WrenchIcon },
+  { label: 'On-Duty Staff Responder', sub: 'Arjun Nair • Active On-Duty Staff', email: 'staff.security@athithi.demo', role: 'STAFF', icon: UserIcon },
 ];
 
 export function LoginPage() {

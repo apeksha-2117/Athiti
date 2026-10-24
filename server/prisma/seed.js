@@ -56,7 +56,14 @@ async function main() {
     },
   });
 
-  // ── Staff
+  // ── Single On-Duty Staff for live demo
+  await prisma.user.deleteMany({
+    where: {
+      role: 'STAFF',
+      email: { not: 'staff.security@athithi.demo' },
+    },
+  });
+
   const staff1 = await prisma.user.upsert({
     where: { email: 'staff.security@athithi.demo' },
     update: {
@@ -69,42 +76,6 @@ async function main() {
     create: {
       name: 'Arjun Nair',
       email: 'staff.security@athithi.demo',
-      passwordHash: demoHash,
-      role: 'STAFF',
-      hotelId: hotel.id,
-    },
-  });
-
-  const staff2 = await prisma.user.upsert({
-    where: { email: 'staff.maintenance@athithi.demo' },
-    update: {
-      name: 'Kavya Reddy',
-      passwordHash: demoHash,
-      role: 'STAFF',
-      hotelId: hotel.id,
-      status: 'ACTIVE',
-    },
-    create: {
-      name: 'Kavya Reddy',
-      email: 'staff.maintenance@athithi.demo',
-      passwordHash: demoHash,
-      role: 'STAFF',
-      hotelId: hotel.id,
-    },
-  });
-
-  const staff3 = await prisma.user.upsert({
-    where: { email: 'staff.housekeeping@athithi.demo' },
-    update: {
-      name: 'Ravi Kumar',
-      passwordHash: demoHash,
-      role: 'STAFF',
-      hotelId: hotel.id,
-      status: 'ACTIVE',
-    },
-    create: {
-      name: 'Ravi Kumar',
-      email: 'staff.housekeeping@athithi.demo',
       passwordHash: demoHash,
       role: 'STAFF',
       hotelId: hotel.id,
@@ -257,13 +228,11 @@ async function main() {
 
   console.log('✅ Seed complete!\n');
   console.log('Demo credentials (all passwords: Demo1234!):');
-  console.log('  Admin:     admin@athithi.demo');
-  console.log('  Staff 1:   staff.security@athithi.demo');
-  console.log('  Staff 2:   staff.maintenance@athithi.demo');
-  console.log('  Staff 3:   staff.housekeeping@athithi.demo');
-  console.log('  Guest 1:   guest.ananya@athithi.demo   (Room 101)');
-  console.log('  Guest 2:   guest.vikram@athithi.demo   (Room 201)');
-  console.log('  Guest 3:   guest.meera@athithi.demo    (Room 301)');
+  console.log('  Admin:          admin@athithi.demo');
+  console.log('  On-Duty Staff:  staff.security@athithi.demo (Arjun Nair)');
+  console.log('  Guest 1:        guest.ananya@athithi.demo   (Room 101)');
+  console.log('  Guest 2:        guest.vikram@athithi.demo   (Room 201)');
+  console.log('  Guest 3:        guest.meera@athithi.demo    (Room 301)');
 }
 
 main()
