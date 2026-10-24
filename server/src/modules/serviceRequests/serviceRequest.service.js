@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js';
 import { emitToHotel, emitToRole, emitToUser } from '../../realtime/emitter.js';
+import { logAudit, TX_OPTIONS } from '../../utils/auditLogger.js';
 
 export async function createServiceRequest(user, data) {
   // Find guest's active stay
@@ -52,16 +53,6 @@ export async function createServiceRequest(user, data) {
       },
     });
 
-    await tx.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: 'SERVICE_REQUEST_CREATED',
-        entityType: 'SERVICE_REQUEST',
-        entityId: newReq.id,
-        changeSummary: { category: data.category, room: newReq.room?.roomNumber, photoUrl: data.photoUrl || undefined },
-      },
-    });
-
     return tx.serviceRequest.findUnique({
       where: { id: newReq.id },
       include: {
@@ -72,6 +63,14 @@ export async function createServiceRequest(user, data) {
         },
       },
     });
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: user.id,
+    action: 'SERVICE_REQUEST_CREATED',
+    entityType: 'SERVICE_REQUEST',
+    entityId: req.id,
+    changeSummary: { category: data.category, room: req.room?.roomNumber, photoUrl: data.photoUrl || undefined },
   });
 
   emitToHotel(req.hotelId, 'service_request:created', req);
@@ -164,7 +163,7 @@ export async function assignServiceRequest(serviceRequestId, adminId, { assignee
     });
 
     return asgn;
-  });
+  }, TX_OPTIONS);
 
   emitToUser(assigneeId, 'assignment:created', assignment);
   emitToRole('ADMIN', 'service_request:updated', assignment.serviceRequest);

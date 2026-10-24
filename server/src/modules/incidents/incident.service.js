@@ -2,6 +2,7 @@ import { prisma } from '../../config/prisma.js';
 import { emitToHotel, emitToRole, emitToUser } from '../../realtime/emitter.js';
 import { findNearestResponder } from '../dispatch/proximity.js';
 import { getActiveStaffPositions } from '../../realtime/socket.js';
+import { logAudit, TX_OPTIONS } from '../../utils/auditLogger.js';
 
 export async function createSOS(guestId, { category = 'OTHER', priority = 'CRITICAL', description = 'EMERGENCY SOS ACTIVATED', coordinates, photoUrl }) {
   // Find guest's active stay
@@ -133,23 +134,22 @@ export async function createSOS(guestId, { category = 'OTHER', priority = 'CRITI
       });
     }
 
-    await tx.auditLog.create({
-      data: {
-        actorId: guestId,
-        action: 'SOS_TRIGGERED',
-        entityType: 'INCIDENT',
-        entityId: inc.id,
-        changeSummary: {
-          priority,
-          room: inc.room?.roomNumber,
-          coordinates,
-          autoDispatchedTo: nearestResponder?.staff?.name || null,
-          proximityMeters: nearestResponder?.estimatedMeters || null,
-        },
-      },
-    });
-
     return inc;
+  }, TX_OPTIONS);
+
+  // Non-blocking safe audit log (executed outside transaction to eliminate timeouts)
+  logAudit({
+    actorId: guestId,
+    action: 'SOS_TRIGGERED',
+    entityType: 'INCIDENT',
+    entityId: incident.id,
+    changeSummary: {
+      priority,
+      room: incident.room?.roomNumber || null,
+      coordinates: coordinates || null,
+      autoDispatchedTo: nearestResponder?.staff?.name || null,
+      proximityMeters: nearestResponder?.estimatedMeters || null,
+    },
   });
 
   // Attach assignments and responder metadata for immediate frontend consumption
@@ -249,20 +249,19 @@ export async function createIncident(user, data) {
       },
     });
 
-    await tx.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: 'INCIDENT_REPORTED',
-        entityType: 'INCIDENT',
-        entityId: inc.id,
-        changeSummary: { category: data.category, priority: data.priority },
-      },
-    });
-
     return inc;
-  });
+  }, TX_OPTIONS);
 
   incident.attachments = createdAttachment ? [createdAttachment] : [];
+
+  // Non-blocking safe audit log
+  logAudit({
+    actorId: user.id,
+    action: 'INCIDENT_REPORTED',
+    entityType: 'INCIDENT',
+    entityId: incident.id,
+    changeSummary: { category: data.category, priority: data.priority },
+  });
 
   emitToHotel(incident.hotelId, 'incident:created', incident);
   emitToRole('ADMIN', 'incident:created', incident);
@@ -392,17 +391,15 @@ export async function escalateIncident(incidentId, adminId, reason) {
       },
     });
 
-    await tx.auditLog.create({
-      data: {
-        actorId: adminId,
-        action: 'INCIDENT_ESCALATED',
-        entityType: 'INCIDENT',
-        entityId: incidentId,
-        changeSummary: { reason },
-      },
-    });
-
     return inc;
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: adminId,
+    action: 'INCIDENT_ESCALATED',
+    entityType: 'INCIDENT',
+    entityId: incidentId,
+    changeSummary: { reason },
   });
 
   emitToHotel(updated.hotelId, 'incident:updated', updated);
@@ -445,17 +442,15 @@ export async function closeIncident(incidentId, adminId, { resolutionNote, exter
       },
     });
 
-    await tx.auditLog.create({
-      data: {
-        actorId: adminId,
-        action: 'INCIDENT_CLOSED',
-        entityType: 'INCIDENT',
-        entityId: incidentId,
-        changeSummary: { resolutionNote, externalServiceContacted },
-      },
-    });
-
     return inc;
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: adminId,
+    action: 'INCIDENT_CLOSED',
+    entityType: 'INCIDENT',
+    entityId: incidentId,
+    changeSummary: { resolutionNote, externalServiceContacted },
   });
 
   emitToHotel(updated.hotelId, 'incident:updated', updated);

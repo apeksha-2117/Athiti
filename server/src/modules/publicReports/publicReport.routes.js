@@ -6,6 +6,7 @@ import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import { validate } from '../../middleware/validate.js';
 import { emitToRole, emitToHotel } from '../../realtime/emitter.js';
+import { logAudit, TX_OPTIONS } from '../../utils/auditLogger.js';
 
 export const publicReportRouter = Router();
 
@@ -133,17 +134,15 @@ adminPublicReportRouter.post('/:id/review', validate(reviewSchema), async (req, 
         });
       }
 
-      await tx.auditLog.create({
-        data: {
-          actorId: req.user.id,
-          action: `PUBLIC_REPORT_${action}`,
-          entityType: 'PUBLIC_REPORT',
-          entityId: report.id,
-          changeSummary: { action, reviewNote },
-        },
-      });
-
       return rep;
+    }, TX_OPTIONS);
+
+    logAudit({
+      actorId: req.user.id,
+      action: `PUBLIC_REPORT_${action}`,
+      entityType: 'PUBLIC_REPORT',
+      entityId: report.id,
+      changeSummary: { action, reviewNote },
     });
 
     if (createdIncident) {

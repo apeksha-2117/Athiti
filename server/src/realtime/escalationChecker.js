@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { emitToRole, emitToHotel } from './emitter.js';
+import { logAudit, TX_OPTIONS } from '../utils/auditLogger.js';
 
 let intervalId = null;
 
@@ -45,18 +46,16 @@ export function startEscalationChecker(intervalMs = 15000) {
               description: `Automated Escalation: Assignment to ${asgn.assignee.name} was not acknowledged within deadline.`,
             },
           });
+        }, TX_OPTIONS);
 
-          await tx.auditLog.create({
-            data: {
-              action: 'AUTOMATED_ASSIGNMENT_ESCALATED',
-              entityType: 'ASSIGNMENT',
-              entityId: asgn.id,
-              changeSummary: {
-                reason: 'Acknowledgement deadline exceeded',
-                assignee: asgn.assignee.name,
-              },
-            },
-          });
+        logAudit({
+          action: 'AUTOMATED_ASSIGNMENT_ESCALATED',
+          entityType: 'ASSIGNMENT',
+          entityId: asgn.id,
+          changeSummary: {
+            reason: 'Acknowledgement deadline exceeded',
+            assignee: asgn.assignee.name,
+          },
         });
 
         // Broadcast escalation alert

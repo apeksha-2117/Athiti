@@ -1,5 +1,6 @@
 import { prisma } from '../../config/prisma.js';
 import { emitToHotel, emitToRole, emitToUser } from '../../realtime/emitter.js';
+import { logAudit, TX_OPTIONS } from '../../utils/auditLogger.js';
 
 export async function getEligibleStaff(hotelId) {
   const where = {
@@ -85,17 +86,15 @@ export async function assignIncident(incidentId, adminId, { assigneeId, instruct
       },
     });
 
-    await tx.auditLog.create({
-      data: {
-        actorId: adminId,
-        action: 'ASSIGNMENT_CREATED',
-        entityType: 'ASSIGNMENT',
-        entityId: newAssignment.id,
-        changeSummary: { assignee: staff.name, incidentId },
-      },
-    });
-
     return newAssignment;
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: adminId,
+    action: 'ASSIGNMENT_CREATED',
+    entityType: 'ASSIGNMENT',
+    entityId: assignment.id,
+    changeSummary: { assignee: staff.name, incidentId },
   });
 
   // Real-time broadcasts
@@ -188,16 +187,14 @@ export async function acknowledgeAssignment(assignmentId, staffId) {
       });
     }
 
-    await tx.auditLog.create({
-      data: {
-        actorId: staffId,
-        action: 'ASSIGNMENT_ACKNOWLEDGED',
-        entityType: 'ASSIGNMENT',
-        entityId: assignmentId,
-      },
-    });
-
     return asgn;
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: staffId,
+    action: 'ASSIGNMENT_ACKNOWLEDGED',
+    entityType: 'ASSIGNMENT',
+    entityId: assignmentId,
   });
 
   if (updated.incident) {
@@ -256,17 +253,15 @@ export async function declineAssignment(assignmentId, staffId, reason) {
       });
     }
 
-    await tx.auditLog.create({
-      data: {
-        actorId: staffId,
-        action: 'ASSIGNMENT_DECLINED',
-        entityType: 'ASSIGNMENT',
-        entityId: assignmentId,
-        changeSummary: { reason },
-      },
-    });
-
     return asgn;
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: staffId,
+    action: 'ASSIGNMENT_DECLINED',
+    entityType: 'ASSIGNMENT',
+    entityId: assignmentId,
+    changeSummary: { reason },
   });
 
   if (updated.incident) {
@@ -372,17 +367,15 @@ export async function updateAssignmentStatus(assignmentId, staffId, { status, no
       });
     }
 
-    await tx.auditLog.create({
-      data: {
-        actorId: staffId,
-        action: `ASSIGNMENT_${status}`,
-        entityType: 'ASSIGNMENT',
-        entityId: assignmentId,
-        changeSummary: { status, notes, photoProofUrl: photoProofUrl || undefined },
-      },
-    });
-
     return asgn;
+  }, TX_OPTIONS);
+
+  logAudit({
+    actorId: staffId,
+    action: `ASSIGNMENT_${status}`,
+    entityType: 'ASSIGNMENT',
+    entityId: assignmentId,
+    changeSummary: { status, notes, photoProofUrl: photoProofUrl || undefined },
   });
 
   if (updated.incident) {
