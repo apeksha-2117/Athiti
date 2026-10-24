@@ -20,7 +20,7 @@ roomRouter.get('/', async (req, res, next) => {
           },
         },
         incidents: {
-          where: { status: { not: 'CLOSED' } },
+          where: { status: { notIn: ['RESOLVED', 'CLOSED', 'CANCELLED'] } },
           select: { id: true, priority: true, category: true, status: true },
         },
         serviceRequests: {

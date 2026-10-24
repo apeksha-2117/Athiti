@@ -68,7 +68,7 @@ export function HotelFloorPlan({
 
   // Map active incidents to rooms on this floor
   const activeIncidents = useMemo(() => {
-    return incidents.filter((i) => i.status !== 'CLOSED');
+    return incidents.filter((i) => !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(i.status));
   }, [incidents]);
 
   // Active service requests

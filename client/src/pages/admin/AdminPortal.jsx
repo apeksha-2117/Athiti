@@ -36,6 +36,7 @@ export function AdminPortal() {
   const [staffPositions, setStaffPositions] = useState({});
   const [loading, setLoading] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [showResolvedIncidents, setShowResolvedIncidents] = useState(false);
 
   // Selected Room for Detail Drawer
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -295,15 +296,18 @@ export function AdminPortal() {
     }
   };
 
-  const filteredIncidents = incidents.filter((inc) => {
+  const activeIncidentsList = incidents.filter((i) => !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(i.status));
+  const resolvedIncidentsList = incidents.filter((i) => ['RESOLVED', 'CLOSED'].includes(i.status));
+
+  const filteredIncidents = (showResolvedIncidents ? resolvedIncidentsList : activeIncidentsList).filter((inc) => {
     if (priorityFilter === 'ALL') return true;
     return inc.priority === priorityFilter;
   });
 
   // KPI Calculations
-  const activeEmergencies = incidents.filter((i) => ['CRITICAL', 'HIGH'].includes(i.priority) && i.status !== 'CLOSED').length;
-  const unassignedCount = incidents.filter((i) => i.status === 'REPORTED').length;
-  const respondingCount = incidents.filter((i) => ['ASSIGNED', 'RESPONDING', 'IN_PROGRESS'].includes(i.status)).length;
+  const activeEmergencies = activeIncidentsList.filter((i) => ['CRITICAL', 'HIGH'].includes(i.priority)).length;
+  const unassignedCount = activeIncidentsList.filter((i) => i.status === 'REPORTED').length;
+  const respondingCount = activeIncidentsList.filter((i) => ['ASSIGNED', 'RESPONDING', 'IN_PROGRESS'].includes(i.status)).length;
   const pendingReportsCount = publicReports.filter((p) => p.status === 'UNVERIFIED').length;
 
   const floors = [1, 2, 3];
@@ -395,7 +399,7 @@ export function AdminPortal() {
           <ShieldAlertIcon size={15} />
           <span>Incident Queue</span>
           <span className="badge badge-neutral" style={{ fontSize: '0.65rem', marginLeft: '4px' }}>
-            {incidents.filter(i => i.status !== 'CLOSED').length}
+            {activeIncidentsList.length}
           </span>
         </button>
 
@@ -451,17 +455,38 @@ export function AdminPortal() {
       {/* VIEW 1: INCIDENT CRISIS QUEUE */}
       {activeTab === 'INCIDENTS' && (
         <div>
-          {/* Priority filter buttons */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-            {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((p) => (
+          {/* Priority filter buttons & Resolved Archive toggle */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((p) => {
+                const baseList = showResolvedIncidents ? resolvedIncidentsList : activeIncidentsList;
+                const count = p === 'ALL' ? baseList.length : baseList.filter((i) => i.priority === p).length;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPriorityFilter(p)}
+                    className={`btn btn-sm ${priorityFilter === p ? 'btn-primary' : 'btn-secondary'}`}
+                  >
+                    {p} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {resolvedIncidentsList.length > 0 && (
               <button
-                key={p}
-                onClick={() => setPriorityFilter(p)}
-                className={`btn btn-sm ${priorityFilter === p ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => {
+                  setShowResolvedIncidents(!showResolvedIncidents);
+                  setPriorityFilter('ALL');
+                }}
+                className={`btn btn-sm ${showResolvedIncidents ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.78rem' }}
               >
-                {p} ({p === 'ALL' ? incidents.length : incidents.filter(i => i.priority === p).length})
+                {showResolvedIncidents
+                  ? `← Back to Active Queue (${activeIncidentsList.length})`
+                  : `Resolved Archive (${resolvedIncidentsList.length})`}
               </button>
-            ))}
+            )}
           </div>
 
           {loading ? (
@@ -717,7 +742,8 @@ export function AdminPortal() {
                       gap: '14px',
                     }}>
                       {floorRooms.map((rm) => {
-                        const hasActiveIncident = rm.incidents && rm.incidents.length > 0;
+                        const roomActiveIncidents = (rm.incidents || []).filter(i => !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(i.status));
+                        const hasActiveIncident = roomActiveIncidents.length > 0;
                         const hasServiceReq = rm.serviceRequests && rm.serviceRequests.length > 0;
                         const activeStay = rm.stays && rm.stays[0];
 
@@ -773,7 +799,7 @@ export function AdminPortal() {
                                 display: 'inline-block',
                                 marginTop: '4px',
                               }}>
-                                {rm.incidents.length} Active Incident
+                                {roomActiveIncidents.length} Active Incident
                               </div>
                             )}
 
