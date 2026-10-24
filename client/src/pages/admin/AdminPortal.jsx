@@ -77,8 +77,24 @@ export function AdminPortal() {
       loadData();
     };
 
-    socket.on('incident:created', handleRefresh);
-    socket.on('incident:updated', handleRefresh);
+    const handleIncidentCreated = (newIncident) => {
+      // Immediate 0ms UI update
+      setIncidents((prev) => {
+        if (!newIncident?.id || prev.some((inc) => inc.id === newIncident.id)) return prev;
+        return [newIncident, ...prev];
+      });
+      loadData();
+    };
+
+    const handleIncidentUpdated = (updatedIncident) => {
+      setIncidents((prev) =>
+        prev.map((inc) => (inc.id === updatedIncident?.id ? { ...inc, ...updatedIncident } : inc))
+      );
+      loadData();
+    };
+
+    socket.on('incident:created', handleIncidentCreated);
+    socket.on('incident:updated', handleIncidentUpdated);
     socket.on('incident:assigned', handleRefresh);
     socket.on('assignment:acknowledged', handleRefresh);
     socket.on('assignment:declined', handleRefresh);
@@ -89,9 +105,21 @@ export function AdminPortal() {
     socket.on('public_report:created', handleRefresh);
     socket.on('public_report:updated', handleRefresh);
 
+    // Instant refresh when user returns to this tab
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', loadData);
+
+    // 15-second background sync fallback
+    const syncTimer = setInterval(loadData, 15000);
+
     return () => {
-      socket.off('incident:created', handleRefresh);
-      socket.off('incident:updated', handleRefresh);
+      socket.off('incident:created', handleIncidentCreated);
+      socket.off('incident:updated', handleIncidentUpdated);
       socket.off('incident:assigned', handleRefresh);
       socket.off('assignment:acknowledged', handleRefresh);
       socket.off('assignment:declined', handleRefresh);
@@ -101,6 +129,10 @@ export function AdminPortal() {
       socket.off('service_request:updated', handleRefresh);
       socket.off('public_report:created', handleRefresh);
       socket.off('public_report:updated', handleRefresh);
+
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', loadData);
+      clearInterval(syncTimer);
     };
   }, []);
 

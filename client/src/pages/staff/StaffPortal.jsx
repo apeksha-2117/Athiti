@@ -36,10 +36,20 @@ export function StaffPortal() {
     socket.on('assignment:updated', handleUpdate);
     socket.on('incident:assigned', handleUpdate);
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadTasks();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', loadTasks);
+    const syncTimer = setInterval(loadTasks, 15000);
+
     return () => {
       socket.off('assignment:created', handleUpdate);
       socket.off('assignment:updated', handleUpdate);
       socket.off('incident:assigned', handleUpdate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', loadTasks);
+      clearInterval(syncTimer);
     };
   }, []);
 

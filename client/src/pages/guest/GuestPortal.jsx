@@ -67,11 +67,21 @@ export function GuestPortal() {
     socket.on('service_request:created', handleUpdate);
     socket.on('service_request:updated', handleUpdate);
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadData();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', loadData);
+    const syncTimer = setInterval(loadData, 15000);
+
     return () => {
       socket.off('incident:created', handleUpdate);
       socket.off('incident:updated', handleUpdate);
       socket.off('service_request:created', handleUpdate);
       socket.off('service_request:updated', handleUpdate);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', loadData);
+      clearInterval(syncTimer);
     };
   }, []);
 
