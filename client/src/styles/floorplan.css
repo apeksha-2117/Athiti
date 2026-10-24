@@ -1,0 +1,297 @@
+/* ==========================================================================
+   Athithi Architectural Floor Plan — Blueprint Design System
+   Matches hospitality dark theme: navy blueprint, high contrast accents
+   ========================================================================== */
+
+.floorplan-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+/* Floor Selector Bar */
+.floorplan-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+}
+
+.floor-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.floor-tab-btn {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.floor-tab-btn:hover {
+  background: var(--bg-surface-active);
+  color: var(--text-primary);
+  border-color: var(--brand-primary);
+}
+
+.floor-tab-btn.active {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: var(--brand-light);
+  color: var(--brand-light);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.floor-badge-alert {
+  background: var(--color-critical);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  animation: pulse-badge 1.8s infinite;
+}
+
+@keyframes pulse-badge {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Filter Chips */
+.marker-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-chip {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--border-muted);
+}
+
+.filter-chip.active {
+  background: var(--bg-surface-active);
+  color: var(--text-primary);
+  border-color: #38bdf8;
+}
+
+/* Main Layout Grid (Blueprint + Side Inspector) */
+.floorplan-workspace {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--space-md);
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .floorplan-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Blueprint Stage Card */
+.blueprint-card {
+  background: #050b14;
+  border: 1px solid #162a45;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(10, 30, 60, 0.4);
+}
+
+.blueprint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+.blueprint-title {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blueprint-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-btn {
+  background: #0e1e32;
+  border: 1px solid #1f3d63;
+  color: #94a3b8;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.zoom-btn:hover {
+  background: #193354;
+  color: #f8fafc;
+  border-color: #38bdf8;
+}
+
+/* SVG Blueprint Rendering */
+.blueprint-svg-wrapper {
+  width: 100%;
+  overflow: auto;
+  border: 1px dashed rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  background: #040810;
+  touch-action: pan-x pan-y;
+}
+
+.blueprint-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 650px;
+  user-select: none;
+}
+
+/* Blueprint Interactive Room Styles */
+.bp-room {
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bp-room-bg {
+  transition: fill 0.2s ease, stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.bp-room:hover .bp-room-bg {
+  stroke: #38bdf8 !important;
+  stroke-width: 2.5px;
+  fill: rgba(56, 189, 248, 0.12);
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.35));
+}
+
+.bp-room.selected .bp-room-bg {
+  stroke: var(--brand-light);
+  stroke-width: 3px;
+  stroke-dasharray: 6 3;
+  fill: rgba(245, 158, 11, 0.18);
+  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.4));
+}
+
+.bp-room.has-incident .bp-room-bg {
+  fill: rgba(239, 68, 68, 0.18);
+  stroke: var(--color-critical);
+  stroke-width: 2px;
+}
+
+/* Radar Ping on Critical Emergency Markers */
+@keyframes radar-ping {
+  0% {
+    r: 10;
+    opacity: 0.9;
+  }
+  100% {
+    r: 28;
+    opacity: 0;
+  }
+}
+
+.radar-wave {
+  animation: radar-ping 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  pointer-events: none;
+}
+
+/* Side Inspector Panel */
+.blueprint-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.inspector-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.inspector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.presence-callout {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid var(--brand-light);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.unlocated-shelf {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.unlocated-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.unlocated-item:hover {
+  border-color: #38bdf8;
+  transform: translateX(2px);
+}

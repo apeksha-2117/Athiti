@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { getSocket } from '../../realtime/socket';
+import { HotelFloorPlan } from '../../components/floorplan/HotelFloorPlan';
 
 export function AdminPortal() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('INCIDENTS'); // 'INCIDENTS' | 'ROOMS' | 'SERVICES' | 'PUBLIC_REPORTS' | 'AUDIT_LOGS'
+  const [floorplanViewMode, setFloorplanViewMode] = useState('BLUEPRINT'); // 'BLUEPRINT' | 'CARDS'
 
   const [incidents, setIncidents] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -524,116 +526,145 @@ export function AdminPortal() {
       {/* VIEW 2: HOTEL FLOOR PLAN & ROOMS */}
       {activeTab === 'ROOMS' && (
         <div>
-          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-              Interactive floor layout with booking occupancy, active stay records, and real-time hazard markers.
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Interactive architectural 2D blueprint with live hazard markers, occupancy tracking, and room inspection.
             </p>
-            <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              <span>🟢 Available</span>
-              <span>🔵 Occupied</span>
-              <span>🔴 Active Incident</span>
-              <span>🔧 Maintenance</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                className={`btn btn-sm ${floorplanViewMode === 'BLUEPRINT' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFloorplanViewMode('BLUEPRINT')}
+              >
+                📐 CAD Blueprint View
+              </button>
+              <button
+                className={`btn btn-sm ${floorplanViewMode === 'CARDS' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFloorplanViewMode('CARDS')}
+              >
+                📋 Room Cards Grid
+              </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {floors.map((fl) => {
-              const floorRooms = rooms.filter((r) => r.floor === fl);
-              return (
-                <div key={fl} className="card card-elevated" style={{ padding: '20px' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '14px', color: 'var(--brand-light)' }}>
-                    Floor {fl}
-                  </h3>
+          {floorplanViewMode === 'BLUEPRINT' ? (
+            <HotelFloorPlan
+              rooms={rooms}
+              incidents={incidents}
+              serviceRequests={serviceRequests}
+              publicReports={publicReports}
+              staffList={staffList}
+              onSelectRoom={(rm) => setSelectedRoom(rm)}
+              onAssignIncident={(inc) => {
+                if (staffList.length > 0) setSelectedStaffId(staffList[0].id);
+                setAssignModal(inc);
+              }}
+              onEscalateIncident={(inc) => setEscalateModal(inc)}
+              onCloseIncident={(inc) => setCloseModal(inc)}
+              onAssignService={(srv) => {
+                if (staffList.length > 0) setSelectedStaffId(staffList[0].id);
+                setAssignServiceModal(srv);
+              }}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {floors.map((fl) => {
+                const floorRooms = rooms.filter((r) => r.floor === fl);
+                return (
+                  <div key={fl} className="card card-elevated" style={{ padding: '20px' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '14px', color: 'var(--brand-light)' }}>
+                      Floor {fl}
+                    </h3>
 
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                    gap: '14px',
-                  }}>
-                    {floorRooms.map((rm) => {
-                      const hasActiveIncident = rm.incidents && rm.incidents.length > 0;
-                      const hasServiceReq = rm.serviceRequests && rm.serviceRequests.length > 0;
-                      const activeStay = rm.stays && rm.stays[0];
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                      gap: '14px',
+                    }}>
+                      {floorRooms.map((rm) => {
+                        const hasActiveIncident = rm.incidents && rm.incidents.length > 0;
+                        const hasServiceReq = rm.serviceRequests && rm.serviceRequests.length > 0;
+                        const activeStay = rm.stays && rm.stays[0];
 
-                      return (
-                        <div
-                          key={rm.id}
-                          onClick={() => setSelectedRoom(rm)}
-                          style={{
-                            backgroundColor: hasActiveIncident
-                              ? 'rgba(239, 68, 68, 0.12)'
-                              : 'var(--bg-app)',
-                            border: hasActiveIncident
-                              ? '2px solid var(--color-critical)'
-                              : '1px solid var(--border-muted)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: '14px',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>
-                              Room {rm.roomNumber}
-                            </strong>
-                            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                              {rm.roomType}
-                            </span>
+                        return (
+                          <div
+                            key={rm.id}
+                            onClick={() => setSelectedRoom(rm)}
+                            style={{
+                              backgroundColor: hasActiveIncident
+                                ? 'rgba(239, 68, 68, 0.12)'
+                                : 'var(--bg-app)',
+                              border: hasActiveIncident
+                                ? '2px solid var(--color-critical)'
+                                : '1px solid var(--border-muted)',
+                              borderRadius: 'var(--radius-md)',
+                              padding: '14px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <strong style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                                Room {rm.roomNumber}
+                              </strong>
+                              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                {rm.roomType}
+                              </span>
+                            </div>
+
+                            <div style={{ fontSize: '0.82rem', marginBottom: '6px' }}>
+                              Status: <span style={{
+                                fontWeight: 600,
+                                color: rm.operationalStatus === 'OCCUPIED' ? '#38bdf8' : '#10b981',
+                              }}>
+                                {rm.operationalStatus}
+                              </span>
+                            </div>
+
+                            {activeStay && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                                Guest: <strong>{activeStay.guest?.name}</strong>
+                              </div>
+                            )}
+
+                            {hasActiveIncident && (
+                              <div style={{
+                                backgroundColor: 'var(--color-critical-bg)',
+                                color: 'var(--color-critical)',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                display: 'inline-block',
+                                marginTop: '4px',
+                              }}>
+                                🚨 {rm.incidents.length} Active Incident
+                              </div>
+                            )}
+
+                            {hasServiceReq && (
+                              <div style={{
+                                backgroundColor: 'var(--color-low-bg)',
+                                color: 'var(--color-low)',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                display: 'inline-block',
+                                marginTop: '4px',
+                                marginLeft: hasActiveIncident ? '6px' : '0',
+                              }}>
+                                🛎️ Service
+                              </div>
+                            )}
                           </div>
-
-                          <div style={{ fontSize: '0.82rem', marginBottom: '6px' }}>
-                            Status: <span style={{
-                              fontWeight: 600,
-                              color: rm.operationalStatus === 'OCCUPIED' ? '#38bdf8' : '#10b981',
-                            }}>
-                              {rm.operationalStatus}
-                            </span>
-                          </div>
-
-                          {activeStay && (
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                              Guest: <strong>{activeStay.guest?.name}</strong>
-                            </div>
-                          )}
-
-                          {hasActiveIncident && (
-                            <div style={{
-                              backgroundColor: 'var(--color-critical-bg)',
-                              color: 'var(--color-critical)',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              display: 'inline-block',
-                              marginTop: '4px',
-                            }}>
-                              🚨 {rm.incidents.length} Active Incident
-                            </div>
-                          )}
-
-                          {hasServiceReq && (
-                            <div style={{
-                              backgroundColor: 'var(--color-low-bg)',
-                              color: 'var(--color-low)',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              display: 'inline-block',
-                              marginTop: '4px',
-                              marginLeft: hasActiveIncident ? '6px' : '0',
-                            }}>
-                              🛎️ Service
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
