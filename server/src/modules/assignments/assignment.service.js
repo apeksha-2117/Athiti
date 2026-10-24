@@ -2,12 +2,14 @@ import { prisma } from '../../config/prisma.js';
 import { emitToHotel, emitToRole, emitToUser } from '../../realtime/emitter.js';
 
 export async function getEligibleStaff(hotelId) {
+  const where = {
+    role: 'STAFF',
+    status: 'ACTIVE',
+  };
+  if (hotelId) where.hotelId = hotelId;
+
   return prisma.user.findMany({
-    where: {
-      hotelId,
-      role: 'STAFF',
-      status: 'ACTIVE',
-    },
+    where,
     select: {
       id: true,
       name: true,

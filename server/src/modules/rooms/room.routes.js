@@ -9,8 +9,9 @@ roomRouter.use(authenticate, authorize('ADMIN'));
 // GET /api/admin/rooms (Grouped by floor)
 roomRouter.get('/', async (req, res, next) => {
   try {
+    const where = req.user.hotelId ? { hotelId: req.user.hotelId } : {};
     const rooms = await prisma.room.findMany({
-      where: { hotelId: req.user.hotelId },
+      where,
       include: {
         stays: {
           where: { status: 'ACTIVE' },

@@ -77,8 +77,9 @@ export async function getGuestServiceRequests(guestId) {
 }
 
 export async function getAdminServiceRequests(hotelId) {
+  const where = hotelId ? { hotelId } : {};
   return prisma.serviceRequest.findMany({
-    where: { hotelId },
+    where,
     include: {
       room: true,
       assignments: {

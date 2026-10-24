@@ -65,8 +65,9 @@ adminPublicReportRouter.use(authenticate, authorize('ADMIN'));
 
 adminPublicReportRouter.get('/', async (req, res, next) => {
   try {
+    const where = req.user.hotelId ? { hotelId: req.user.hotelId } : {};
     const reports = await prisma.publicReport.findMany({
-      where: { hotelId: req.user.hotelId },
+      where,
       orderBy: { createdAt: 'desc' },
     });
     res.json({ reports });

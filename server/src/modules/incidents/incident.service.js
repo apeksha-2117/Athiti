@@ -190,7 +190,8 @@ export async function getIncidentById(id, user) {
 }
 
 export async function getAdminIncidents(hotelId, { status, priority, category } = {}) {
-  const where = { hotelId };
+  const where = {};
+  if (hotelId) where.hotelId = hotelId;
   if (status) where.status = status;
   if (priority) where.priority = priority;
   if (category) where.category = category;

@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
+import pg from 'pg';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -24,7 +25,21 @@ export function createApp() {
   const app = express();
   const httpServer = createServer(app);
 
-  // Trust Render reverse proxy for secure cookies and IP forwarding
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+  const dbUrl = process.env.DATABASE_URL || '';
+  const isRemoteDb = dbUrl.includes('render.com') || dbUrl.includes('sslmode=require') || isProduction;
+
+  // ── PostgreSQL connection pool for session store with SSL support
+  const pgPool = new pg.Pool({
+    connectionString: dbUrl,
+    ssl: isRemoteDb ? { rejectUnauthorized: false } : false,
+  });
+
+  pgPool.on('error', (err) => {
+    console.error('[pgPool] Unexpected error on idle client:', err.message);
+  });
+
+  // Trust Render / cloud reverse proxy for secure cookies and IP forwarding
   app.set('trust proxy', 1);
 
   // ── Security headers
@@ -47,17 +62,18 @@ export function createApp() {
   // ── Session
   const sessionMiddleware = session({
     store: new PgStore({
-      conString: process.env.DATABASE_URL,
+      pool: pgPool,
       tableName: 'sessions',
       createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || 'dev_secret_change_me',
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   });
