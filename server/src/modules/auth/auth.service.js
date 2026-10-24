@@ -5,7 +5,15 @@ import { prisma } from '../../config/prisma.js';
  * Verify credentials, return safe user object (no passwordHash).
  */
 export async function verifyCredentials(email, password) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      stays: {
+        where: { status: 'ACTIVE' },
+        include: { room: true },
+      },
+    },
+  });
   if (!user || user.status !== 'ACTIVE') return null;
 
   const valid = await argon2.verify(user.passwordHash, password);
@@ -19,7 +27,15 @@ export async function verifyCredentials(email, password) {
  * Return safe user object by id (for session hydration).
  */
 export async function getUserById(id) {
-  const user = await prisma.user.findUnique({ where: { id } });
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      stays: {
+        where: { status: 'ACTIVE' },
+        include: { room: true },
+      },
+    },
+  });
   if (!user) return null;
   const { passwordHash: _, ...safeUser } = user;
   return safeUser;

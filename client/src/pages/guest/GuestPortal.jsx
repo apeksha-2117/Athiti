@@ -27,6 +27,14 @@ export function GuestPortal() {
   const [serviceRequests, setServiceRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Derive guest's room and floor from stay or email fallback
+  const activeStay = user?.stays?.[0];
+  const activeRoomNumber = activeStay?.room?.roomNumber || (user?.email?.includes('101') ? '101' : user?.email?.includes('201') ? '201' : user?.email?.includes('301') ? '301' : '101');
+  const activeFloor = activeStay?.room?.floor || (activeRoomNumber.startsWith('2') ? 2 : activeRoomNumber.startsWith('3') ? 3 : 1);
+
+  // Demo Location Simulator state
+  const [simulatedLocKey, setSimulatedLocKey] = useState('ROOM');
+
   // SOS state
   const [sosLoading, setSosLoading] = useState(false);
   const [sosSuccess, setSosSuccess] = useState(null);
@@ -94,38 +102,104 @@ export function GuestPortal() {
     };
   }, []);
 
-  const getDeviceLocation = () => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) return resolve(null);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          resolve({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-          });
-        },
-        () => resolve(null),
-        { timeout: 2500, maximumAge: 30000, enableHighAccuracy: true }
-      );
-    });
+  const getDeviceLocation = async () => {
+    if (simulatedLocKey === 'REAL') {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          },
+          () => resolve(null),
+          { timeout: 3000, maximumAge: 30000, enableHighAccuracy: true }
+        );
+      });
+    }
+
+    // High-precision simulated GPS at Grand Athithi Hotel, 42 Marina Drive, Mumbai
+    const roomOffset = (parseInt(activeRoomNumber, 10) % 10) * 0.00003;
+    const floorOffset = activeFloor * 0.00004;
+
+    const locMap = {
+      ROOM: {
+        latitude: 18.92982 + roomOffset,
+        longitude: 72.82361 + floorOffset,
+        accuracy: 3,
+      },
+      POOL: {
+        latitude: 18.92965,
+        longitude: 72.82385,
+        accuracy: 4,
+      },
+      GYM: {
+        latitude: 18.92978,
+        longitude: 72.82350,
+        accuracy: 3,
+      },
+      LOBBY: {
+        latitude: 18.92972,
+        longitude: 72.82362,
+        accuracy: 4,
+      },
+    };
+
+    return locMap[simulatedLocKey] || locMap.ROOM;
   };
 
-  const triggerSOS = async (category = 'OTHER', description = 'EMERGENCY SOS ACTIVATED') => {
+  const triggerSOS = async (category = 'OTHER', description = 'Immediate Emergency Assistance Requested') => {
     setSosLoading(true);
     try {
-      // Rapid background GPS probe (falls back instantly if unavailable)
       const coordinates = await getDeviceLocation();
+
+      let finalDesc = description;
+      if (simulatedLocKey !== 'ROOM' && simulatedLocKey !== 'REAL') {
+        const locLabels = {
+          POOL: 'Swimming Pool & Sun Deck (Ground Floor)',
+          GYM: 'Fitness Center & Spa (Floor 2)',
+          LOBBY: 'Main Lobby & Reception (Ground Floor)',
+        };
+        if (locLabels[simulatedLocKey]) {
+          finalDesc = `${description} [Location: ${locLabels[simulatedLocKey]}]`;
+        }
+      }
 
       const data = await apiFetch('/incidents/sos', {
         method: 'POST',
-        body: JSON.stringify({ category, description, coordinates }),
+        body: JSON.stringify({ category, description: finalDesc, coordinates }),
       });
       setSosSuccess(data.incident);
       setLocationSubmitted('');
       setShowCategoryModal(false);
       setCustomDescription('');
       loadData();
+
+      // If user simulated being in common area (pool/gym/lobby), clarify location on incident event log
+      if (simulatedLocKey !== 'ROOM' && simulatedLocKey !== 'REAL') {
+        const locLabels = {
+          POOL: 'Swimming Pool & Sun Deck (Ground Floor)',
+          GYM: 'Fitness Center & Spa (Floor 2)',
+          LOBBY: 'Main Lobby & Reception (Ground Floor)',
+        };
+        const label = locLabels[simulatedLocKey];
+        if (label) {
+          try {
+            await apiFetch(`/incidents/${data.incident.id}/events`, {
+              method: 'POST',
+              body: JSON.stringify({
+                eventType: 'LOCATION_SPECIFIED',
+                description: `Guest clarified physical location: ${label}`,
+              }),
+            });
+            setLocationSubmitted(label);
+          } catch {
+            // ignore
+          }
+        }
+      }
     } catch (err) {
       alert(err.message || 'Failed to trigger SOS');
     } finally {
@@ -209,7 +283,7 @@ export function GuestPortal() {
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Welcome, {user?.name}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Grand Athithi Hotel • Active Room Stay
+            Grand Athithi Hotel • Room {activeRoomNumber} (Floor {activeFloor})
           </p>
         </div>
         <div style={{
@@ -222,6 +296,65 @@ export function GuestPortal() {
           fontWeight: 600,
         }}>
           🛡️ Hotel Safety System Connected
+        </div>
+      </div>
+
+      {/* Demo Geolocation Simulator Bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        backgroundColor: 'rgba(56, 189, 248, 0.08)',
+        border: '1px solid rgba(56, 189, 248, 0.28)',
+        padding: '10px 16px',
+        borderRadius: 'var(--radius-md)',
+        marginBottom: '20px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '1.2rem' }}>📍</span>
+          <div>
+            <div style={{
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              color: '#38bdf8',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}>
+              Demo Geolocation Simulator
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Grand Athithi Hotel • 42 Marina Drive, Mumbai
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            Simulate Guest Position:
+          </label>
+          <select
+            value={simulatedLocKey}
+            onChange={(e) => setSimulatedLocKey(e.target.value)}
+            className="form-input"
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.82rem',
+              backgroundColor: 'var(--bg-app)',
+              borderColor: '#38bdf8',
+              color: '#f8fafc',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            <option value="ROOM">🛏️ Assigned Room {activeRoomNumber} (Floor {activeFloor})</option>
+            <option value="POOL">🏊 Swimming Pool & Deck (Ground Floor)</option>
+            <option value="GYM">🏋️ Fitness Center & Spa (Floor 2)</option>
+            <option value="LOBBY">🍸 Main Lobby & Reception (Ground Floor)</option>
+            <option value="REAL">🛰️ Real Device GPS (Browser Geolocation)</option>
+          </select>
         </div>
       </div>
 
