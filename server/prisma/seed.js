@@ -6,13 +6,29 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding Athithi demo data...');
 
+  // ── Clean transient data (incidents, service requests, notifications, logs)
+  console.log('🧹 Cleaning transient operational records...');
+  await prisma.attachment.deleteMany({});
+  await prisma.incidentEvent.deleteMany({});
+  await prisma.assignment.deleteMany({});
+  await prisma.incident.deleteMany({});
+  await prisma.serviceRequestEvent.deleteMany({});
+  await prisma.serviceRequest.deleteMany({});
+  await prisma.publicReport.deleteMany({});
+  await prisma.notification.deleteMany({});
+  await prisma.auditLog.deleteMany({});
+
   // ── Hash a shared demo password
   const demoHash = await argon2.hash('Demo1234!');
 
   // ── Hotel
   const hotel = await prisma.hotel.upsert({
     where: { id: 'hotel_grand_athithi' },
-    update: {},
+    update: {
+      name: 'Grand Athithi Hotel',
+      address: '42 Marina Drive, Mumbai, MH 400001',
+      config: { timezone: 'Asia/Kolkata', escalationDeadlineMinutes: 5 },
+    },
     create: {
       id: 'hotel_grand_athithi',
       name: 'Grand Athithi Hotel',
@@ -24,7 +40,13 @@ async function main() {
   // ── Admin
   const admin = await prisma.user.upsert({
     where: { email: 'admin@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Priya Sharma',
+      passwordHash: demoHash,
+      role: 'ADMIN',
+      hotelId: hotel.id,
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Priya Sharma',
       email: 'admin@athithi.demo',
@@ -37,7 +59,13 @@ async function main() {
   // ── Staff
   const staff1 = await prisma.user.upsert({
     where: { email: 'staff.security@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Arjun Nair',
+      passwordHash: demoHash,
+      role: 'STAFF',
+      hotelId: hotel.id,
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Arjun Nair',
       email: 'staff.security@athithi.demo',
@@ -49,7 +77,13 @@ async function main() {
 
   const staff2 = await prisma.user.upsert({
     where: { email: 'staff.maintenance@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Kavya Reddy',
+      passwordHash: demoHash,
+      role: 'STAFF',
+      hotelId: hotel.id,
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Kavya Reddy',
       email: 'staff.maintenance@athithi.demo',
@@ -61,7 +95,13 @@ async function main() {
 
   const staff3 = await prisma.user.upsert({
     where: { email: 'staff.housekeeping@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Ravi Kumar',
+      passwordHash: demoHash,
+      role: 'STAFF',
+      hotelId: hotel.id,
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Ravi Kumar',
       email: 'staff.housekeeping@athithi.demo',
@@ -74,7 +114,12 @@ async function main() {
   // ── Guests
   const guest1 = await prisma.user.upsert({
     where: { email: 'guest.ananya@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Ananya Iyer',
+      passwordHash: demoHash,
+      role: 'GUEST',
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Ananya Iyer',
       email: 'guest.ananya@athithi.demo',
@@ -85,7 +130,12 @@ async function main() {
 
   const guest2 = await prisma.user.upsert({
     where: { email: 'guest.vikram@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Vikram Patel',
+      passwordHash: demoHash,
+      role: 'GUEST',
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Vikram Patel',
       email: 'guest.vikram@athithi.demo',
@@ -96,7 +146,12 @@ async function main() {
 
   const guest3 = await prisma.user.upsert({
     where: { email: 'guest.meera@athithi.demo' },
-    update: {},
+    update: {
+      name: 'Meera Menon',
+      passwordHash: demoHash,
+      role: 'GUEST',
+      status: 'ACTIVE',
+    },
     create: {
       name: 'Meera Menon',
       email: 'guest.meera@athithi.demo',
@@ -128,7 +183,11 @@ async function main() {
   for (const r of roomData) {
     const room = await prisma.room.upsert({
       where: { hotelId_roomNumber: { hotelId: hotel.id, roomNumber: r.roomNumber } },
-      update: {},
+      update: {
+        floor: r.floor,
+        roomType: r.roomType,
+        operationalStatus: r.operationalStatus,
+      },
       create: { ...r, hotelId: hotel.id },
     });
     rooms[r.roomNumber] = room;
@@ -141,7 +200,13 @@ async function main() {
 
   const stay1 = await prisma.stay.upsert({
     where: { id: 'stay_ananya_101' },
-    update: {},
+    update: {
+      guestId: guest1.id,
+      roomId: rooms['101'].id,
+      checkInAt: checkIn,
+      scheduledCheckoutAt: checkout,
+      status: 'ACTIVE',
+    },
     create: {
       id: 'stay_ananya_101',
       guestId: guest1.id,
@@ -154,7 +219,13 @@ async function main() {
 
   const stay2 = await prisma.stay.upsert({
     where: { id: 'stay_vikram_201' },
-    update: {},
+    update: {
+      guestId: guest2.id,
+      roomId: rooms['201'].id,
+      checkInAt: checkIn,
+      scheduledCheckoutAt: checkout,
+      status: 'ACTIVE',
+    },
     create: {
       id: 'stay_vikram_201',
       guestId: guest2.id,
@@ -167,7 +238,13 @@ async function main() {
 
   await prisma.stay.upsert({
     where: { id: 'stay_meera_301' },
-    update: {},
+    update: {
+      guestId: guest3.id,
+      roomId: rooms['301'].id,
+      checkInAt: checkIn,
+      scheduledCheckoutAt: checkout,
+      status: 'ACTIVE',
+    },
     create: {
       id: 'stay_meera_301',
       guestId: guest3.id,
