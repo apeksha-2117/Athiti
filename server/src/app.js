@@ -4,7 +4,6 @@ import cors from 'cors';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
-import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -79,18 +78,6 @@ export function createApp() {
     },
   });
   app.use(sessionMiddleware);
-
-  // ── Global rate limiting (Generous limit for dashboard sync, skips authenticated users)
-  app.use(
-    '/api',
-    rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5000,
-      standardHeaders: true,
-      legacyHeaders: false,
-      skip: (req) => Boolean(req.headers.authorization || req.session?.user),
-    })
-  );
 
   // ── Routes
   app.use('/api/auth', authRouter);
