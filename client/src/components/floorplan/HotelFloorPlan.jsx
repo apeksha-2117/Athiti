@@ -768,7 +768,7 @@ export function HotelFloorPlan({
                   </div>
 
                   <div style={{ background: 'var(--bg-app)', padding: '10px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '14px' }}>
-                    <div>Location: <strong>Room {selectedEntity.data.room?.roomNumber || 'Unknown'} (Floor {selectedEntity.data.room?.floor || selectedFloor})</strong></div>
+                    <div>Location Reference: <strong>Room {selectedEntity.data.room?.roomNumber || 'Unknown'} (Floor {selectedEntity.data.room?.floor || selectedFloor})</strong></div>
                     <div style={{ marginTop: '4px' }}>Status: <strong>{selectedEntity.data.status}</strong></div>
                     {selectedEntity.data.reporter && (
                       <div style={{ marginTop: '4px' }}>
@@ -776,6 +776,31 @@ export function HotelFloorPlan({
                       </div>
                     )}
                   </div>
+
+                  {/* Guest Physical Location Clarification (If outside room) */}
+                  {(() => {
+                    const locEvent = selectedEntity.data.events?.find(
+                      (ev) => ev.eventType === 'LOCATION_SPECIFIED' || ev.description?.includes('clarified physical location')
+                    );
+                    if (!locEvent) return null;
+                    return (
+                      <div style={{
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '4px',
+                        padding: '8px 10px',
+                        fontSize: '0.8rem',
+                        color: '#fbbf24',
+                        fontWeight: 700,
+                        marginBottom: '14px',
+                      }}>
+                        📍 Guest Reported Physical Location:
+                        <div style={{ color: '#f8fafc', fontWeight: 600, marginTop: '3px' }}>
+                          {locEvent.description.replace('Guest clarified physical location: ', '')}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Responder Assignment Info */}
                   <div style={{ background: 'var(--bg-app)', padding: '10px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '16px' }}>

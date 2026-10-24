@@ -201,6 +201,10 @@ export async function getAdminIncidents(hotelId, { status, priority, category } 
     include: {
       room: true,
       reporter: { select: { id: true, name: true, email: true } },
+      events: {
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      },
       assignments: {
         where: { status: { not: 'DECLINED' } },
         include: {

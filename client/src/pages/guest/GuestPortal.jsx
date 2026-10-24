@@ -34,6 +34,12 @@ export function GuestPortal() {
   const [selectedCategory, setSelectedCategory] = useState('OTHER');
   const [customDescription, setCustomDescription] = useState('');
 
+  // Location clarification state
+  const [locationUpdating, setLocationUpdating] = useState(false);
+  const [locationSubmitted, setLocationSubmitted] = useState('');
+  const [showCustomLocation, setShowCustomLocation] = useState(false);
+  const [customLocationText, setCustomLocationText] = useState('');
+
   // Service Request form state
   const [serviceCategory, setServiceCategory] = useState('HOUSEKEEPING');
   const [serviceDescription, setServiceDescription] = useState('');
@@ -96,6 +102,7 @@ export function GuestPortal() {
         body: JSON.stringify({ category, description }),
       });
       setSosSuccess(data.incident);
+      setLocationSubmitted('');
       setShowCategoryModal(false);
       setCustomDescription('');
       loadData();
@@ -103,6 +110,27 @@ export function GuestPortal() {
       alert(err.message || 'Failed to trigger SOS');
     } finally {
       setSosLoading(false);
+    }
+  };
+
+  const updateGuestLocation = async (locationStr) => {
+    if (!sosSuccess) return;
+    setLocationUpdating(true);
+    try {
+      await apiFetch(`/incidents/${sosSuccess.id}/events`, {
+        method: 'POST',
+        body: JSON.stringify({
+          eventType: 'LOCATION_SPECIFIED',
+          description: `Guest clarified physical location: ${locationStr}`,
+        }),
+      });
+      setLocationSubmitted(locationStr);
+      setShowCustomLocation(false);
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to update location');
+    } finally {
+      setLocationUpdating(false);
     }
   };
 
@@ -260,32 +288,120 @@ export function GuestPortal() {
             </button>
           </div>
 
-          {/* SOS Success Banner */}
+          {/* SOS Success Banner & Location Clarifier */}
           {sosSuccess && (
-            <div style={{
+            <div className="card card-elevated" style={{
               backgroundColor: 'var(--color-critical-bg)',
-              border: '1px solid var(--color-critical)',
+              border: '2px solid var(--color-critical)',
               borderRadius: 'var(--radius-md)',
-              padding: '16px 20px',
+              padding: '18px 20px',
               marginBottom: '28px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
             }}>
-              <div>
-                <div style={{ fontWeight: 700, color: 'var(--color-critical)' }}>
-                  🚨 Emergency Alert #{sosSuccess.id.slice(-6).toUpperCase()} Received
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-critical)' }}>
+                    🚨 Emergency Alert #{sosSuccess.id.slice(-6).toUpperCase()} Active
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '4px' }}>
+                    Responders and control room have been alerted. Stay in a safe position.
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', marginTop: '4px' }}>
-                  Control room and responders have been notified. Stay in a safe position.
-                </div>
+                <button
+                  onClick={() => setSosSuccess(null)}
+                  style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', padding: '4px 8px', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  ×
+                </button>
               </div>
-              <button
-                onClick={() => setSosSuccess(null)}
-                style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', padding: '4px 8px' }}
-              >
-                ×
-              </button>
+
+              {/* Location Clarification Sub-flow */}
+              <div style={{
+                marginTop: '14px',
+                paddingTop: '14px',
+                borderTop: '1px solid rgba(239, 68, 68, 0.25)',
+              }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fbbf24', marginBottom: '8px' }}>
+                  📍 Help Security Locate You Fast: Are you in your room right now?
+                </div>
+
+                {locationSubmitted ? (
+                  <div style={{
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid #10b981',
+                    borderRadius: '4px',
+                    padding: '8px 12px',
+                    fontSize: '0.84rem',
+                    color: 'var(--color-success)',
+                    fontWeight: 600,
+                  }}>
+                    ✓ Location updated: <strong>{locationSubmitted}</strong> — relayed to control room & blueprint!
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => updateGuestLocation('Inside room')}
+                        disabled={locationUpdating}
+                      >
+                        🛏️ Yes, in my room
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => updateGuestLocation('In hallway / corridor')}
+                        disabled={locationUpdating}
+                      >
+                        🚶 In hallway / corridor
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => updateGuestLocation('In stairwell')}
+                        disabled={locationUpdating}
+                      >
+                        🪜 In stairwell
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => updateGuestLocation('Trapped in elevator')}
+                        disabled={locationUpdating}
+                      >
+                        🛗 In elevator
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setShowCustomLocation(!showCustomLocation)}
+                        disabled={locationUpdating}
+                      >
+                        📍 Other location...
+                      </button>
+                    </div>
+
+                    {showCustomLocation && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+                          placeholder="E.g. 2nd floor ice machine, pool side, restaurant..."
+                          value={customLocationText}
+                          onChange={(e) => setCustomLocationText(e.target.value)}
+                        />
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            if (customLocationText.trim()) {
+                              updateGuestLocation(customLocationText.trim());
+                            }
+                          }}
+                          disabled={!customLocationText.trim() || locationUpdating}
+                        >
+                          {locationUpdating ? 'Sending...' : 'Send Location'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
