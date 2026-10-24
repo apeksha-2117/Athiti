@@ -81,7 +81,7 @@ export function GuestPortal() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', loadData);
-    const syncTimer = setInterval(loadData, 15000);
+    const syncTimer = setInterval(loadData, 25000);
 
     return () => {
       socket.off('incident:created', handleUpdate);

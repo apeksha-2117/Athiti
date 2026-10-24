@@ -44,7 +44,7 @@ export function StaffPortal() {
     };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', loadTasks);
-    const syncTimer = setInterval(loadTasks, 15000);
+    const syncTimer = setInterval(loadTasks, 25000);
 
     return () => {
       socket.off('assignment:created', handleUpdate);

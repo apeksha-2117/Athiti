@@ -120,8 +120,8 @@ export function AdminPortal() {
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', loadData);
 
-    // 15-second background sync fallback
-    const syncTimer = setInterval(loadData, 15000);
+    // 25-second background sync fallback (realtime handled instantly via Socket.IO)
+    const syncTimer = setInterval(loadData, 25000);
 
     return () => {
       socket.off('incident:created', handleIncidentCreated);

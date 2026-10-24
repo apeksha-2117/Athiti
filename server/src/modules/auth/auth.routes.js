@@ -8,10 +8,10 @@ import { signToken } from '../../utils/token.js';
 
 export const authRouter = Router();
 
-// Strict rate limit on login
+// Friendly rate limit on login for testing & demos
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30, // friendly limit for testing & presentations
+  max: 100,
   message: { error: 'Too many login attempts, try again later' },
 });
 

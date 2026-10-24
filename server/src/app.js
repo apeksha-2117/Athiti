@@ -80,14 +80,15 @@ export function createApp() {
   });
   app.use(sessionMiddleware);
 
-  // ── Global rate limiting
+  // ── Global rate limiting (Generous limit for dashboard sync, skips authenticated users)
   app.use(
     '/api',
     rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 300,
+      max: 5000,
       standardHeaders: true,
       legacyHeaders: false,
+      skip: (req) => Boolean(req.headers.authorization || req.session?.user),
     })
   );
 
