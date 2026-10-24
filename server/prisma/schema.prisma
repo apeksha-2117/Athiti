@@ -1,0 +1,402 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum Role {
+  GUEST
+  STAFF
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  SUITE
+  DELUXE
+}
+
+enum RoomOperationalStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum StayStatus {
+  ACTIVE
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum IncidentCategory {
+  FIRE_OR_SMOKE
+  MEDICAL_EMERGENCY
+  ELECTRICAL_HAZARD
+  WATER_LEAKAGE
+  SECURITY_THREAT
+  STRUCTURAL_HAZARD
+  OTHER
+}
+
+enum IncidentPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IncidentStatus {
+  REPORTED
+  ACKNOWLEDGED
+  ASSIGNED
+  RESPONDING
+  IN_PROGRESS
+  ESCALATED
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  DISMISSED
+}
+
+enum ServiceRequestCategory {
+  MAINTENANCE_PLUMBING
+  ELECTRICAL_APPLIANCE
+  HOUSEKEEPING
+  EXTRA_AMENITIES
+  GENERAL_ASSISTANCE
+}
+
+enum ServiceRequestStatus {
+  SUBMITTED
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELLED
+}
+
+enum AssignmentStatus {
+  PENDING
+  ACKNOWLEDGED
+  DECLINED
+  EN_ROUTE
+  ON_SCENE
+  IN_PROGRESS
+  COMPLETED
+  REASSIGNED
+}
+
+enum NotificationType {
+  INCIDENT_CREATED
+  INCIDENT_UPDATED
+  INCIDENT_ASSIGNED
+  ASSIGNMENT_ACKNOWLEDGED
+  ASSIGNMENT_ESCALATED
+  SERVICE_REQUEST_CREATED
+  SERVICE_REQUEST_UPDATED
+  ESCALATION_ALERT
+  GENERAL
+}
+
+enum DeliveryStatus {
+  CREATED
+  DELIVERED
+  ACKNOWLEDGED
+}
+
+enum PublicReportStatus {
+  UNVERIFIED
+  ESCALATED
+  LINKED
+  DISMISSED
+}
+
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
+
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          Role
+  status        AccountStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  hotel             Hotel?            @relation(fields: [hotelId], references: [id])
+  hotelId           String?
+  stays             Stay[]
+  incidentsReported Incident[]        @relation("ReportedBy")
+  assignments       Assignment[]      @relation("AssignedTo")
+  assignmentsGiven  Assignment[]      @relation("AssignedBy")
+  incidentEvents    IncidentEvent[]
+  serviceReqEvents  ServiceRequestEvent[]
+  serviceRequests   ServiceRequest[]  @relation("GuestServiceRequests")
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  attachments       Attachment[]
+
+  @@index([email])
+  @@index([hotelId])
+}
+
+model Hotel {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  config    Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  rooms           Room[]
+  staff           User[]
+  incidents       Incident[]
+  serviceRequests ServiceRequest[]
+  publicReports   PublicReport[]
+}
+
+model Room {
+  id              String                @id @default(cuid())
+  hotel           Hotel                 @relation(fields: [hotelId], references: [id])
+  hotelId         String
+  roomNumber      String
+  floor           Int
+  roomType        RoomType              @default(SINGLE)
+  operationalStatus RoomOperationalStatus @default(AVAILABLE)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  stays           Stay[]
+  incidents       Incident[]
+  serviceRequests ServiceRequest[]
+
+  @@unique([hotelId, roomNumber])
+  @@index([hotelId, floor])
+}
+
+model Stay {
+  id                    String     @id @default(cuid())
+  guest                 User       @relation(fields: [guestId], references: [id])
+  guestId               String
+  room                  Room       @relation(fields: [roomId], references: [id])
+  roomId                String
+  checkInAt             DateTime
+  scheduledCheckoutAt   DateTime
+  actualCheckoutAt      DateTime?
+  status                StayStatus @default(ACTIVE)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  // Relations
+  incidents       Incident[]
+  serviceRequests ServiceRequest[]
+
+  @@index([guestId])
+  @@index([roomId])
+}
+
+model Incident {
+  id                    String             @id @default(cuid())
+  hotel                 Hotel              @relation(fields: [hotelId], references: [id])
+  hotelId               String
+  reporter              User?              @relation("ReportedBy", fields: [reporterId], references: [id])
+  reporterId            String?
+  stay                  Stay?              @relation(fields: [stayId], references: [id])
+  stayId                String?
+  room                  Room?              @relation(fields: [roomId], references: [id])
+  roomId                String?
+  publicReporterRef     String?            // Reference for public (unauthenticated) reports
+  category              IncidentCategory
+  description           String?
+  priority              IncidentPriority   @default(CRITICAL)
+  verificationStatus    VerificationStatus @default(VERIFIED)
+  status                IncidentStatus     @default(REPORTED)
+  externalServiceContacted Boolean         @default(false)
+  externalServiceDetails   Json?
+  resolutionNote        String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  resolvedAt            DateTime?
+  closedAt              DateTime?
+
+  // Relations
+  assignments   Assignment[]
+  events        IncidentEvent[]
+  notifications Notification[]
+  attachments   Attachment[]
+
+  @@index([hotelId, status])
+  @@index([hotelId, priority])
+  @@index([reporterId])
+}
+
+model ServiceRequest {
+  id          String                 @id @default(cuid())
+  hotel       Hotel                  @relation(fields: [hotelId], references: [id])
+  hotelId     String
+  guest       User                   @relation("GuestServiceRequests", fields: [guestId], references: [id])
+  guestId     String
+  stay        Stay?                  @relation(fields: [stayId], references: [id])
+  stayId      String?
+  room        Room?                  @relation(fields: [roomId], references: [id])
+  roomId      String?
+  category    ServiceRequestCategory
+  description String
+  priority    IncidentPriority       @default(LOW)
+  status      ServiceRequestStatus   @default(SUBMITTED)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  resolvedAt  DateTime?
+
+  // Relations
+  assignments   Assignment[]
+  events        ServiceRequestEvent[]
+  notifications Notification[]
+  attachments   Attachment[]
+
+  @@index([hotelId, status])
+  @@index([guestId])
+}
+
+model Assignment {
+  id              String           @id @default(cuid())
+  // Exactly one of the following must be set
+  incident        Incident?        @relation(fields: [incidentId], references: [id])
+  incidentId      String?
+  serviceRequest  ServiceRequest?  @relation(fields: [serviceRequestId], references: [id])
+  serviceRequestId String?
+
+  assignee        User             @relation("AssignedTo", fields: [assigneeId], references: [id])
+  assigneeId      String
+  assignedBy      User             @relation("AssignedBy", fields: [assignedById], references: [id])
+  assignedById    String
+  status          AssignmentStatus @default(PENDING)
+  instructions    String?
+  declineReason   String?
+  assignedAt      DateTime         @default(now())
+  acknowledgedAt  DateTime?
+  completedAt     DateTime?
+  deadlineAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([assigneeId])
+  @@index([incidentId])
+  @@index([serviceRequestId])
+}
+
+model IncidentEvent {
+  id         String   @id @default(cuid())
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  incidentId String
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorId    String?
+  eventType  String   // e.g. STATUS_CHANGED, NOTE_ADDED, ASSIGNED, ESCALATED
+  description String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([incidentId])
+}
+
+model ServiceRequestEvent {
+  id               String         @id @default(cuid())
+  serviceRequest   ServiceRequest @relation(fields: [serviceRequestId], references: [id])
+  serviceRequestId String
+  actor            User?          @relation(fields: [actorId], references: [id])
+  actorId          String?
+  eventType        String
+  description      String
+  createdAt        DateTime       @default(now())
+
+  @@index([serviceRequestId])
+}
+
+model Attachment {
+  id               String          @id @default(cuid())
+  incident         Incident?       @relation(fields: [incidentId], references: [id])
+  incidentId       String?
+  serviceRequest   ServiceRequest? @relation(fields: [serviceRequestId], references: [id])
+  serviceRequestId String?
+  uploadedBy       User?           @relation(fields: [uploadedById], references: [id])
+  uploadedById     String?
+  storageKey       String          @unique
+  contentType      String
+  fileSize         Int
+  createdAt        DateTime        @default(now())
+}
+
+model Notification {
+  id               String          @id @default(cuid())
+  recipient        User            @relation(fields: [recipientId], references: [id])
+  recipientId      String
+  incident         Incident?       @relation(fields: [incidentId], references: [id])
+  incidentId       String?
+  serviceRequest   ServiceRequest? @relation(fields: [serviceRequestId], references: [id])
+  serviceRequestId String?
+  type             NotificationType
+  message          String
+  deliveryStatus   DeliveryStatus  @default(CREATED)
+  acknowledgedAt   DateTime?
+  createdAt        DateTime        @default(now())
+
+  @@index([recipientId, deliveryStatus])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  actor         User?    @relation(fields: [actorId], references: [id])
+  actorId       String?
+  action        String
+  entityType    String
+  entityId      String
+  changeSummary Json?
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+model PublicReport {
+  id          String             @id @default(cuid())
+  hotel       Hotel              @relation(fields: [hotelId], references: [id])
+  hotelId     String
+  reference   String             @unique @default(cuid())
+  category    IncidentCategory
+  description String
+  location    String
+  status      PublicReportStatus @default(UNVERIFIED)
+  reviewNote  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@index([hotelId, status])
+}
