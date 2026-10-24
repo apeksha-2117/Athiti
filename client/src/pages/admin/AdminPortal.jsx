@@ -55,6 +55,7 @@ export function AdminPortal() {
 
   const [escalateModal, setEscalateModal] = useState(null);
   const [escalateReason, setEscalateReason] = useState('');
+  const [escalateLoading, setEscalateLoading] = useState(false);
 
   // Service Request Assign Modal
   const [assignServiceModal, setAssignServiceModal] = useState(null);
@@ -261,7 +262,8 @@ export function AdminPortal() {
   };
 
   const submitEscalate = async () => {
-    if (!escalateReason.trim()) return;
+    if (!escalateReason.trim() || escalateLoading) return;
+    setEscalateLoading(true);
     try {
       await apiFetch(`/admin/incidents/${escalateModal.id}/escalate`, {
         method: 'POST',
@@ -272,6 +274,8 @@ export function AdminPortal() {
       loadData();
     } catch (err) {
       alert(err.message || 'Failed to escalate');
+    } finally {
+      setEscalateLoading(false);
     }
   };
 
@@ -331,9 +335,14 @@ export function AdminPortal() {
             Grand Athithi Hotel • Central Emergency Operations & Dispatch
           </p>
         </div>
-        <button onClick={loadData} className="btn btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <RefreshCwIcon size={14} />
-          <span>Synchronize Console</span>
+        <button
+          onClick={loadData}
+          disabled={loading}
+          className="btn btn-secondary btn-sm"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <RefreshCwIcon size={14} className={loading ? 'spin-anim' : ''} />
+          <span>{loading ? 'Synchronizing...' : 'Synchronize Console'}</span>
         </button>
       </div>
 
@@ -1168,8 +1177,10 @@ export function AdminPortal() {
                 className={`btn ${reviewAction === 'ESCALATE' ? 'btn-critical' : 'btn-secondary'}`}
                 onClick={submitReportReview}
                 disabled={reviewLoading || !reviewNote.trim()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                {reviewLoading ? 'Processing...' : reviewAction === 'ESCALATE' ? 'Confirm Escalation' : 'Confirm Dismissal'}
+                {reviewLoading && <span className="btn-spinner" />}
+                <span>{reviewLoading ? 'Processing...' : reviewAction === 'ESCALATE' ? 'Confirm Escalation' : 'Confirm Dismissal'}</span>
               </button>
             </div>
           </div>
@@ -1281,8 +1292,10 @@ export function AdminPortal() {
                 className="btn btn-primary"
                 onClick={submitAssign}
                 disabled={assignLoading || !selectedStaffId}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                {assignLoading ? 'Dispatching...' : 'Dispatch Responder'}
+                {assignLoading && <span className="btn-spinner" />}
+                <span>{assignLoading ? 'Dispatching...' : 'Dispatch Responder'}</span>
               </button>
             </div>
           </div>
@@ -1316,8 +1329,14 @@ export function AdminPortal() {
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
               <button className="btn btn-secondary" onClick={() => setAssignServiceModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={submitServiceAssign} disabled={assignLoading}>
-                Assign
+              <button
+                className="btn btn-primary"
+                onClick={submitServiceAssign}
+                disabled={assignLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {assignLoading && <span className="btn-spinner" />}
+                <span>{assignLoading ? 'Assigning...' : 'Assign'}</span>
               </button>
             </div>
           </div>
@@ -1436,8 +1455,10 @@ export function AdminPortal() {
                 className="btn btn-primary"
                 onClick={submitClose}
                 disabled={!resolutionNote.trim() || closeLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                {closeLoading ? 'Closing...' : 'Confirm Closure'}
+                {closeLoading && <span className="btn-spinner" />}
+                <span>{closeLoading ? 'Closing...' : 'Confirm Closure'}</span>
               </button>
             </div>
           </div>
@@ -1473,9 +1494,11 @@ export function AdminPortal() {
               <button
                 className="btn btn-critical"
                 onClick={submitEscalate}
-                disabled={!escalateReason.trim()}
+                disabled={!escalateReason.trim() || escalateLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                Confirm Escalation
+                {escalateLoading && <span className="btn-spinner" />}
+                <span>{escalateLoading ? 'Escalating...' : 'Confirm Escalation'}</span>
               </button>
             </div>
           </div>

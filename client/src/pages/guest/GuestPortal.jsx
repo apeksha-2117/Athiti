@@ -17,6 +17,7 @@ import {
   WrenchIcon,
   UserIcon,
   CameraIcon,
+  RefreshCwIcon,
 } from '../../components/common/Icons';
 
 const EMERGENCY_CATEGORIES = [
@@ -784,7 +785,15 @@ export function GuestPortal() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Emergency Reports</h2>
-              <button onClick={loadData} className="btn btn-secondary btn-sm">Refresh</button>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RefreshCwIcon size={14} className={loading ? 'spin-anim' : ''} />
+                <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
             </div>
 
             {loading ? (
@@ -937,8 +946,10 @@ export function GuestPortal() {
                   type="submit"
                   className="btn btn-primary"
                   disabled={serviceLoading || !serviceDescription.trim()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  {serviceLoading ? 'Submitting...' : 'Submit Service Request'}
+                  {serviceLoading && <span className="btn-spinner" />}
+                  <span>{serviceLoading ? 'Submitting...' : 'Submit Service Request'}</span>
                 </button>
               </div>
             </form>
@@ -1154,13 +1165,14 @@ export function GuestPortal() {
               {/* CRITICAL */}
               <div
                 onClick={() => setSelectedPriority('CRITICAL')}
+                className="interactive-tile"
                 style={{
                   padding: '12px 14px',
                   borderRadius: 'var(--radius-sm)',
                   border: selectedPriority === 'CRITICAL' ? '2px solid #ef4444' : '1px solid var(--border-muted)',
-                  backgroundColor: selectedPriority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-app)',
+                  backgroundColor: selectedPriority === 'CRITICAL' ? 'rgba(239, 68, 68, 0.18)' : 'var(--bg-app)',
+                  boxShadow: selectedPriority === 'CRITICAL' ? '0 0 14px rgba(239, 68, 68, 0.25)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -1178,13 +1190,14 @@ export function GuestPortal() {
               {/* HIGH / MEDIUM */}
               <div
                 onClick={() => setSelectedPriority('HIGH')}
+                className="interactive-tile"
                 style={{
                   padding: '12px 14px',
                   borderRadius: 'var(--radius-sm)',
                   border: selectedPriority === 'HIGH' ? '2px solid #f97316' : '1px solid var(--border-muted)',
-                  backgroundColor: selectedPriority === 'HIGH' ? 'rgba(249, 115, 22, 0.15)' : 'var(--bg-app)',
+                  backgroundColor: selectedPriority === 'HIGH' ? 'rgba(249, 115, 22, 0.18)' : 'var(--bg-app)',
+                  boxShadow: selectedPriority === 'HIGH' ? '0 0 14px rgba(249, 115, 22, 0.25)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -1202,13 +1215,14 @@ export function GuestPortal() {
               {/* LOW */}
               <div
                 onClick={() => setSelectedPriority('LOW')}
+                className="interactive-tile"
                 style={{
                   padding: '12px 14px',
                   borderRadius: 'var(--radius-sm)',
                   border: selectedPriority === 'LOW' ? '2px solid #eab308' : '1px solid var(--border-muted)',
-                  backgroundColor: selectedPriority === 'LOW' ? 'rgba(234, 179, 8, 0.15)' : 'var(--bg-app)',
+                  backgroundColor: selectedPriority === 'LOW' ? 'rgba(234, 179, 8, 0.18)' : 'var(--bg-app)',
+                  boxShadow: selectedPriority === 'LOW' ? '0 0 14px rgba(234, 179, 8, 0.25)' : 'none',
                   cursor: 'pointer',
-                  transition: 'all 0.15s ease',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -1242,8 +1256,8 @@ export function GuestPortal() {
                 onClick={() => triggerSOS(selectedCategory || 'OTHER', customDescription || 'Immediate Emergency Assistance Requested', selectedPriority)}
                 disabled={sosLoading}
               >
-                <ShieldAlertIcon size={16} />
-                <span>{sosLoading ? 'Dispatching...' : `Dispatch Now (${selectedPriority})`}</span>
+                {sosLoading ? <span className="btn-spinner" /> : <ShieldAlertIcon size={16} />}
+                <span>{sosLoading ? 'Dispatching Nearest...' : `Dispatch Now (${selectedPriority})`}</span>
               </button>
             </div>
           </div>
@@ -1296,6 +1310,7 @@ export function GuestPortal() {
                 <label
                   key={opt.id}
                   onClick={() => setHandshakeChoice(opt.id)}
+                  className="interactive-tile"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1303,9 +1318,9 @@ export function GuestPortal() {
                     padding: '11px 13px',
                     borderRadius: 'var(--radius-sm)',
                     border: handshakeChoice === opt.id ? '2px solid var(--brand-primary)' : '1px solid var(--border-muted)',
-                    backgroundColor: handshakeChoice === opt.id ? 'rgba(14, 165, 233, 0.12)' : 'var(--bg-app)',
+                    backgroundColor: handshakeChoice === opt.id ? 'rgba(217, 119, 6, 0.16)' : 'var(--bg-app)',
+                    boxShadow: handshakeChoice === opt.id ? '0 0 12px rgba(217, 119, 6, 0.2)' : 'none',
                     cursor: 'pointer',
-                    transition: 'all 0.12s ease',
                   }}
                 >
                   <div>

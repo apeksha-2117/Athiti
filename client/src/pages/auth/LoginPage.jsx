@@ -96,16 +96,17 @@ export function LoginPage() {
                   key={p.email}
                   type="button"
                   onClick={() => selectPreset(p.email)}
+                  className="interactive-tile"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '9px 10px',
+                    padding: '9px 12px',
                     minHeight: '44px',
-                    borderRadius: 'var(--radius-xs)',
-                    backgroundColor: isSelected ? 'var(--bg-surface-active)' : 'transparent',
-                    border: `1px solid ${isSelected ? 'var(--brand-primary)' : 'transparent'}`,
-                    transition: 'all 0.12s ease',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: isSelected ? 'rgba(217, 119, 6, 0.14)' : 'var(--bg-surface-elevated)',
+                    border: `1px solid ${isSelected ? 'var(--brand-primary)' : 'var(--border-subtle)'}`,
+                    boxShadow: isSelected ? '0 0 10px rgba(217, 119, 6, 0.15)' : 'none',
                     textAlign: 'left',
                     cursor: 'pointer',
                     touchAction: 'manipulation',
@@ -192,9 +193,16 @@ export function LoginPage() {
             type="submit"
             className="btn btn-primary"
             disabled={loading}
-            style={{ width: '100%', minHeight: '44px', fontSize: '0.92rem', padding: '12px' }}
+            style={{ width: '100%', minHeight: '44px', fontSize: '0.92rem', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            {loading ? 'Authenticating Credentials...' : 'Authenticate'}
+            {loading ? (
+              <>
+                <span className="btn-spinner" />
+                <span>Authenticating Credentials...</span>
+              </>
+            ) : (
+              <span>Authenticate</span>
+            )}
           </button>
         </form>
       </div>

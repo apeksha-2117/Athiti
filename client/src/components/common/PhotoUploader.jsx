@@ -216,6 +216,7 @@ export function PhotoUploader({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
+          className="interactive-tile"
           style={{
             width: '100%',
             padding: compact ? '10px 12px' : '14px 16px',
@@ -229,7 +230,6 @@ export function PhotoUploader({
             justifyContent: 'center',
             gap: '8px',
             cursor: uploading ? 'wait' : 'pointer',
-            transition: 'all 0.15s ease',
             touchAction: 'manipulation',
           }}
           onMouseEnter={(e) => {
@@ -246,9 +246,12 @@ export function PhotoUploader({
           }}
         >
           {uploading ? (
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--brand-light)' }}>
-              Compressing & Uploading Photo...
-            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--brand-light)' }}>
+              <span className="btn-spinner" />
+              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                Compressing & Uploading Photo...
+              </span>
+            </div>
           ) : (
             <>
               <CameraIcon size={18} color="var(--brand-light)" />

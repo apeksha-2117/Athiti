@@ -172,9 +172,10 @@ export function PublicReportPage() {
               type="submit"
               className="btn btn-primary"
               disabled={loading}
-              style={{ width: '100%', padding: '12px' }}
+              style={{ width: '100%', padding: '12px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {loading ? 'Transmitting to Control Room...' : 'Submit Incident Report'}
+              {loading && <span className="btn-spinner" />}
+              <span>{loading ? 'Transmitting to Control Room...' : 'Submit Incident Report'}</span>
             </button>
           </form>
         )}

@@ -227,8 +227,14 @@ export function StaffPortal() {
             {user?.name} • On Duty
           </p>
         </div>
-        <button onClick={loadTasks} className="btn btn-secondary btn-sm">
-          Refresh Tasks
+        <button
+          onClick={loadTasks}
+          disabled={loading}
+          className="btn btn-secondary btn-sm"
+          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <RefreshCwIcon size={14} className={loading ? 'spin-anim' : ''} />
+          <span>{loading ? 'Refreshing...' : 'Refresh Tasks'}</span>
         </button>
       </div>
 
@@ -379,8 +385,8 @@ export function StaffPortal() {
                 disabled={actionLoading}
                 style={{ flex: 2, minWidth: '160px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                <CheckCircleIcon size={16} />
-                <span>Acknowledge & En Route</span>
+                {actionLoading ? <span className="btn-spinner" /> : <CheckCircleIcon size={16} />}
+                <span>{actionLoading ? 'Updating Task...' : 'Acknowledge & En Route'}</span>
               </button>
             </div>
           </div>
@@ -420,8 +426,10 @@ export function StaffPortal() {
                 className="btn btn-critical"
                 onClick={submitDecline}
                 disabled={actionLoading || !declineReason.trim()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                Confirm Decline
+                {actionLoading && <span className="btn-spinner" />}
+                <span>{actionLoading ? 'Declining...' : 'Confirm Decline'}</span>
               </button>
             </div>
           </div>
@@ -463,11 +471,13 @@ export function StaffPortal() {
             />
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => submitStatus('EN_ROUTE')}>En Route</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => submitStatus('ON_SCENE')}>On Scene</button>
-              <button className="btn btn-secondary btn-sm" onClick={() => submitStatus('IN_PROGRESS')}>In Progress</button>
+              <button className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => submitStatus('EN_ROUTE')}>En Route</button>
+              <button className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => submitStatus('ON_SCENE')}>On Scene</button>
+              <button className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => submitStatus('IN_PROGRESS')}>In Progress</button>
               <button
                 className="btn btn-primary btn-sm"
+                disabled={actionLoading}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => {
                   if (!completionPhotoUrl) {
                     alert('Please attach a photo proof of completion before marking the task completed.');
@@ -476,7 +486,8 @@ export function StaffPortal() {
                   submitStatus('COMPLETED', completionPhotoUrl);
                 }}
               >
-                Mark Completed (With Photo)
+                {actionLoading && <span className="btn-spinner" />}
+                <span>{actionLoading ? 'Saving...' : 'Mark Completed (Proof Required)'}</span>
               </button>
               <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={() => { setStatusModal(null); setCompletionPhotoUrl(null); }}>Close</button>
             </div>
@@ -592,8 +603,8 @@ export function StaffPortal() {
                         disabled={actionLoading}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
-                        <CheckCircleIcon size={14} />
-                        <span>Acknowledge & En Route</span>
+                        {actionLoading ? <span className="btn-spinner" /> : <CheckCircleIcon size={14} />}
+                        <span>{actionLoading ? 'Updating...' : 'Acknowledge & En Route'}</span>
                       </button>
                     </div>
                   </div>
