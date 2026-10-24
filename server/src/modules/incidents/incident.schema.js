@@ -11,6 +11,11 @@ export const sosSchema = z.object({
     'OTHER',
   ]).optional().default('OTHER'),
   description: z.string().optional().default('EMERGENCY SOS ACTIVATED'),
+  coordinates: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+    accuracy: z.number().optional(),
+  }).nullable().optional(),
 });
 
 export const createIncidentSchema = z.object({

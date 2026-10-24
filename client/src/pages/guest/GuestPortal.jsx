@@ -94,12 +94,32 @@ export function GuestPortal() {
     };
   }, []);
 
+  const getDeviceLocation = () => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        () => resolve(null),
+        { timeout: 2500, maximumAge: 30000, enableHighAccuracy: true }
+      );
+    });
+  };
+
   const triggerSOS = async (category = 'OTHER', description = 'EMERGENCY SOS ACTIVATED') => {
     setSosLoading(true);
     try {
+      // Rapid background GPS probe (falls back instantly if unavailable)
+      const coordinates = await getDeviceLocation();
+
       const data = await apiFetch('/incidents/sos', {
         method: 'POST',
-        body: JSON.stringify({ category, description }),
+        body: JSON.stringify({ category, description, coordinates }),
       });
       setSosSuccess(data.incident);
       setLocationSubmitted('');

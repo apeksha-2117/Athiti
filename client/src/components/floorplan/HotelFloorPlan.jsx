@@ -802,6 +802,57 @@ export function HotelFloorPlan({
                     );
                   })()}
 
+                  {/* Device GPS Location (If captured) */}
+                  {(() => {
+                    const gpsEvent = selectedEntity.data.events?.find(
+                      (ev) => ev.eventType === 'GPS_COORDINATES_CAPTURED' && ev.metadata?.latitude
+                    );
+                    const descMatch = selectedEntity.data.description?.match(/\[GPS: ([0-9.-]+), ([0-9.-]+)( ±\d+m)?\]/);
+
+                    const lat = gpsEvent?.metadata?.latitude || (descMatch && parseFloat(descMatch[1]));
+                    const lng = gpsEvent?.metadata?.longitude || (descMatch && parseFloat(descMatch[2]));
+                    const acc = gpsEvent?.metadata?.accuracy ? `±${Math.round(gpsEvent.metadata.accuracy)}m` : (descMatch?.[3] ? descMatch[3].trim() : null);
+
+                    if (!lat || !lng) return null;
+
+                    return (
+                      <div style={{
+                        background: 'rgba(56, 189, 248, 0.1)',
+                        border: '1px solid #38bdf8',
+                        borderRadius: '4px',
+                        padding: '8px 10px',
+                        fontSize: '0.8rem',
+                        color: '#38bdf8',
+                        marginBottom: '14px',
+                      }}>
+                        <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          🛰️ Device GPS Captured
+                          {acc && <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>({acc})</span>}
+                        </div>
+                        <div style={{ fontSize: '0.76rem', color: '#f8fafc', marginTop: '2px', fontFamily: 'var(--font-mono)' }}>
+                          {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps?q=${lat},${lng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#fbbf24',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            marginTop: '6px',
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          🗺️ View Exact GPS on Google Maps ↗
+                        </a>
+                      </div>
+                    );
+                  })()}
+
                   {/* Responder Assignment Info */}
                   <div style={{ background: 'var(--bg-app)', padding: '10px', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '16px' }}>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: '2px' }}>ASSIGNED DISPATCH</div>

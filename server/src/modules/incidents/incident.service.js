@@ -1,7 +1,7 @@
 import { prisma } from '../../config/prisma.js';
 import { emitToHotel, emitToRole, emitToUser } from '../../realtime/emitter.js';
 
-export async function createSOS(guestId, { category = 'OTHER', description = 'EMERGENCY SOS ACTIVATED' }) {
+export async function createSOS(guestId, { category = 'OTHER', description = 'EMERGENCY SOS ACTIVATED', coordinates }) {
   // Find guest's active stay
   const activeStay = await prisma.stay.findFirst({
     where: { guestId, status: 'ACTIVE' },
@@ -15,6 +15,11 @@ export async function createSOS(guestId, { category = 'OTHER', description = 'EM
   }
 
   const incident = await prisma.$transaction(async (tx) => {
+    let finalDescription = description;
+    if (coordinates?.latitude && coordinates?.longitude) {
+      finalDescription = `${description} [GPS: ${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)} ±${Math.round(coordinates.accuracy || 0)}m]`;
+    }
+
     const inc = await tx.incident.create({
       data: {
         hotelId: activeStay.room.hotelId,
@@ -22,7 +27,7 @@ export async function createSOS(guestId, { category = 'OTHER', description = 'EM
         stayId: activeStay.id,
         roomId: activeStay.roomId,
         category,
-        description,
+        description: finalDescription,
         priority: 'CRITICAL',
         status: 'REPORTED',
       },
@@ -41,13 +46,26 @@ export async function createSOS(guestId, { category = 'OTHER', description = 'EM
       },
     });
 
+    if (coordinates?.latitude && coordinates?.longitude) {
+      const mapsUrl = `https://www.google.com/maps?q=${coordinates.latitude},${coordinates.longitude}`;
+      await tx.incidentEvent.create({
+        data: {
+          incidentId: inc.id,
+          actorId: guestId,
+          eventType: 'GPS_COORDINATES_CAPTURED',
+          description: `Device coordinates: ${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)} (±${Math.round(coordinates.accuracy || 0)}m)`,
+          metadata: { ...coordinates, mapsUrl },
+        },
+      });
+    }
+
     await tx.auditLog.create({
       data: {
         actorId: guestId,
         action: 'SOS_TRIGGERED',
         entityType: 'INCIDENT',
         entityId: inc.id,
-        changeSummary: { priority: 'CRITICAL', room: inc.room?.roomNumber },
+        changeSummary: { priority: 'CRITICAL', room: inc.room?.roomNumber, coordinates },
       },
     });
 
