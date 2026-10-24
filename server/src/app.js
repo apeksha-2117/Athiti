@@ -30,13 +30,15 @@ export function createApp() {
   // ── Security headers
   app.use(helmet());
 
-  // ── CORS
-  app.use(
-    cors({
-      origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
-      credentials: true,
-    })
-  );
+  // ── CORS (supports Vercel, Render, and local development)
+  const corsOptions = {
+    origin: (origin, callback) => {
+      // Reflect origin to allow credentials from any Vercel domain, Render, or localhost
+      callback(null, true);
+    },
+    credentials: true,
+  };
+  app.use(cors(corsOptions));
 
   // ── Body parsing
   app.use(express.json({ limit: '1mb' }));
@@ -98,7 +100,7 @@ export function createApp() {
   // ── Socket.IO
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+      origin: (origin, callback) => callback(null, true),
       credentials: true,
     },
   });
