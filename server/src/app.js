@@ -12,9 +12,11 @@ import { incidentRouter, adminIncidentRouter } from './modules/incidents/inciden
 import { assignmentRouter, adminAssignmentRouter } from './modules/assignments/assignment.routes.js';
 import { serviceRequestRouter, adminServiceRequestRouter } from './modules/serviceRequests/serviceRequest.routes.js';
 import { roomRouter } from './modules/rooms/room.routes.js';
-import { publicReportRouter } from './modules/publicReports/publicReport.routes.js';
+import { publicReportRouter, adminPublicReportRouter } from './modules/publicReports/publicReport.routes.js';
+import { auditRouter } from './modules/audit/audit.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { initSocketIO } from './realtime/socket.js';
+import { startEscalationChecker } from './realtime/escalationChecker.js';
 
 const PgStore = connectPgSimple(session);
 
@@ -78,6 +80,11 @@ export function createApp() {
   app.use('/api/assignments', assignmentRouter);
   app.use('/api/admin', adminAssignmentRouter);
   app.use('/api/public/reports', publicReportRouter);
+  app.use('/api/admin/public-reports', adminPublicReportRouter);
+  app.use('/api/admin', auditRouter);
+
+  // ── Start background escalation engine
+  startEscalationChecker();
 
   // ── Health check
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));

@@ -5,11 +5,13 @@ import { getSocket } from '../../realtime/socket';
 
 export function AdminPortal() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('INCIDENTS'); // 'INCIDENTS' | 'ROOMS' | 'SERVICES' | 'PUBLIC_REPORTS'
+  const [activeTab, setActiveTab] = useState('INCIDENTS'); // 'INCIDENTS' | 'ROOMS' | 'SERVICES' | 'PUBLIC_REPORTS' | 'AUDIT_LOGS'
 
   const [incidents, setIncidents] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [serviceRequests, setServiceRequests] = useState([]);
+  const [publicReports, setPublicReports] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [priorityFilter, setPriorityFilter] = useState('ALL');
@@ -31,21 +33,35 @@ export function AdminPortal() {
   const [escalateModal, setEscalateModal] = useState(null);
   const [escalateReason, setEscalateReason] = useState('');
 
-  // Modal for Service Requests Assignment
+  // Service Request Assign Modal
   const [assignServiceModal, setAssignServiceModal] = useState(null);
+
+  // AI Situation Brief Modal
+  const [aiBriefModal, setAiBriefModal] = useState(null);
+  const [aiBriefLoading, setAiBriefLoading] = useState(false);
+
+  // Public Report Review Modal
+  const [reviewReportModal, setReviewReportModal] = useState(null);
+  const [reviewAction, setReviewAction] = useState('ESCALATE');
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const loadData = async () => {
     try {
-      const [incData, staffData, roomsData, srvData] = await Promise.all([
+      const [incData, staffData, roomsData, srvData, pubData, auditData] = await Promise.all([
         apiFetch('/admin/incidents'),
         apiFetch('/admin/staff'),
         apiFetch('/admin/rooms'),
         apiFetch('/admin/service-requests'),
+        apiFetch('/admin/public-reports'),
+        apiFetch('/admin/audit-logs'),
       ]);
       setIncidents(incData.incidents || []);
       setStaffList(staffData.staff || []);
       setRooms(roomsData.rooms || []);
       setServiceRequests(srvData.requests || []);
+      setPublicReports(pubData.reports || []);
+      setAuditLogs(auditData.logs || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -67,9 +83,11 @@ export function AdminPortal() {
     socket.on('assignment:acknowledged', handleRefresh);
     socket.on('assignment:declined', handleRefresh);
     socket.on('assignment:updated', handleRefresh);
+    socket.on('assignment:escalated', handleRefresh);
     socket.on('service_request:created', handleRefresh);
     socket.on('service_request:updated', handleRefresh);
     socket.on('public_report:created', handleRefresh);
+    socket.on('public_report:updated', handleRefresh);
 
     return () => {
       socket.off('incident:created', handleRefresh);
@@ -78,11 +96,27 @@ export function AdminPortal() {
       socket.off('assignment:acknowledged', handleRefresh);
       socket.off('assignment:declined', handleRefresh);
       socket.off('assignment:updated', handleRefresh);
+      socket.off('assignment:escalated', handleRefresh);
       socket.off('service_request:created', handleRefresh);
       socket.off('service_request:updated', handleRefresh);
       socket.off('public_report:created', handleRefresh);
+      socket.off('public_report:updated', handleRefresh);
     };
   }, []);
+
+  const openAiBrief = async (incident) => {
+    setAiBriefLoading(true);
+    setAiBriefModal({ incident, summary: null });
+    try {
+      const data = await apiFetch(`/admin/incidents/${incident.id}/summary`);
+      setAiBriefModal({ incident, summary: data.summary });
+    } catch (err) {
+      alert(err.message || 'Failed to generate situation summary');
+      setAiBriefModal(null);
+    } finally {
+      setAiBriefLoading(false);
+    }
+  };
 
   const submitAssign = async () => {
     if (!selectedStaffId) return;
@@ -162,6 +196,27 @@ export function AdminPortal() {
     }
   };
 
+  const submitReportReview = async () => {
+    if (!reviewNote.trim()) return;
+    setReviewLoading(true);
+    try {
+      await apiFetch(`/admin/public-reports/${reviewReportModal.id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: reviewAction,
+          reviewNote,
+        }),
+      });
+      setReviewReportModal(null);
+      setReviewNote('');
+      loadData();
+    } catch (err) {
+      alert(err.message || 'Failed to review report');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
   const filteredIncidents = incidents.filter((inc) => {
     if (priorityFilter === 'ALL') return true;
     return inc.priority === priorityFilter;
@@ -171,9 +226,8 @@ export function AdminPortal() {
   const activeEmergencies = incidents.filter((i) => ['CRITICAL', 'HIGH'].includes(i.priority) && i.status !== 'CLOSED').length;
   const unassignedCount = incidents.filter((i) => i.status === 'REPORTED').length;
   const respondingCount = incidents.filter((i) => ['ASSIGNED', 'RESPONDING', 'IN_PROGRESS'].includes(i.status)).length;
-  const pendingServicesCount = serviceRequests.filter((s) => s.status === 'SUBMITTED').length;
+  const pendingReportsCount = publicReports.filter((p) => p.status === 'UNVERIFIED').length;
 
-  // Group rooms by floor
   const floors = [1, 2, 3];
 
   return (
@@ -235,16 +289,16 @@ export function AdminPortal() {
 
         <div className="card card-elevated" style={{ borderLeft: '4px solid var(--color-low)' }}>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-            Pending Service Requests
+            Unverified Public Reports
           </div>
           <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-low)', marginTop: '4px' }}>
-            {pendingServicesCount}
+            {pendingReportsCount}
           </div>
         </div>
       </div>
 
       {/* Main Console View Selector Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('INCIDENTS')}
           className={`btn btn-sm ${activeTab === 'INCIDENTS' ? 'btn-primary' : 'btn-secondary'}`}
@@ -255,13 +309,25 @@ export function AdminPortal() {
           onClick={() => setActiveTab('ROOMS')}
           className={`btn btn-sm ${activeTab === 'ROOMS' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          🏨 Hotel Floor Plan & Rooms ({rooms.length})
+          🏨 Hotel Floor Plan ({rooms.length})
         </button>
         <button
           onClick={() => setActiveTab('SERVICES')}
           className={`btn btn-sm ${activeTab === 'SERVICES' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          🛎️ Routine Service Queue ({serviceRequests.length})
+          🛎️ Service Queue ({serviceRequests.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('PUBLIC_REPORTS')}
+          className={`btn btn-sm ${activeTab === 'PUBLIC_REPORTS' ? 'btn-primary' : 'btn-secondary'}`}
+        >
+          🌐 Public Triage ({publicReports.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('AUDIT_LOGS')}
+          className={`btn btn-sm ${activeTab === 'AUDIT_LOGS' ? 'btn-primary' : 'btn-secondary'}`}
+        >
+          📜 Audit Trail ({auditLogs.length})
         </button>
       </div>
 
@@ -318,14 +384,23 @@ export function AdminPortal() {
                         </p>
 
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                          Reporter: {inc.reporter?.name || 'Guest'} • Room {inc.room?.roomNumber || 'N/A'} (Floor {inc.room?.floor || 'N/A'}) • {new Date(inc.createdAt).toLocaleTimeString()}
+                          Reporter: {inc.reporter?.name || 'Guest / Public'} • Room {inc.room?.roomNumber || 'N/A'} (Floor {inc.room?.floor || 'N/A'}) • {new Date(inc.createdAt).toLocaleTimeString()}
                         </div>
                       </div>
 
+                      {/* Action buttons */}
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span className="badge badge-high" style={{ padding: '6px 10px' }}>
                           {inc.status}
                         </span>
+
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => openAiBrief(inc)}
+                          style={{ borderColor: 'var(--brand-primary)', color: 'var(--brand-light)' }}
+                        >
+                          ✨ AI Brief
+                        </button>
 
                         {inc.status !== 'CLOSED' && (
                           <>
@@ -397,7 +472,7 @@ export function AdminPortal() {
         </div>
       )}
 
-      {/* VIEW 2: HOTEL FLOOR PLAN & ROOMS (PRD 4.5 FR-027 to FR-030) */}
+      {/* VIEW 2: HOTEL FLOOR PLAN & ROOMS */}
       {activeTab === 'ROOMS' && (
         <div>
           <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -560,6 +635,273 @@ export function AdminPortal() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* VIEW 4: PUBLIC REPORTS TRIAGE */}
+      {activeTab === 'PUBLIC_REPORTS' && (
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>
+            Public Hazard Reports Triage Queue ({publicReports.length})
+          </h2>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            Review external hazard reports submitted by visitors and bystanders. Escalate to active incident or dismiss.
+          </p>
+
+          {publicReports.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+              No public reports in review queue.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {publicReports.map((rep) => (
+                <div key={rep.id} className="card card-elevated" style={{ padding: '16px 20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                        <span className={`badge ${rep.status === 'UNVERIFIED' ? 'badge-high' : rep.status === 'ESCALATED' ? 'badge-critical' : 'badge-low'}`}>
+                          {rep.status}
+                        </span>
+                        <strong style={{ fontSize: '1rem' }}>
+                          {rep.category.replace(/_/g, ' ')}
+                        </strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--brand-light)', fontFamily: 'var(--font-mono)' }}>
+                          Ref: {rep.reference}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '0.85rem', color: 'var(--brand-light)', marginTop: '4px' }}>
+                        📍 Location: <strong>{rep.location}</strong>
+                      </div>
+
+                      <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', marginTop: '6px' }}>
+                        {rep.description}
+                      </p>
+
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                        Received at {new Date(rep.createdAt).toLocaleString()}
+                        {rep.reviewedAt && ` • Reviewed: ${new Date(rep.reviewedAt).toLocaleTimeString()}`}
+                      </div>
+
+                      {rep.reviewNote && (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '6px 10px',
+                          backgroundColor: 'var(--bg-app)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.8rem',
+                          color: 'var(--text-secondary)',
+                        }}>
+                          Operator Note: {rep.reviewNote}
+                        </div>
+                      )}
+                    </div>
+
+                    {rep.status === 'UNVERIFIED' && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => {
+                            setReviewReportModal(rep);
+                            setReviewAction('DISMISS');
+                          }}
+                        >
+                          Dismiss
+                        </button>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            setReviewReportModal(rep);
+                            setReviewAction('ESCALATE');
+                          }}
+                        >
+                          ⚡ Verify & Escalate to Incident
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 5: AUDIT LOGS & CHAIN OF CUSTODY */}
+      {activeTab === 'AUDIT_LOGS' && (
+        <div>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>
+            System Audit Trail & Chain of Custody ({auditLogs.length})
+          </h2>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+            Authoritative, immutable event timeline of all triggers, assignments, acknowledgements, and closures.
+          </p>
+
+          <div className="card card-elevated" style={{ padding: '0', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border-muted)', textAlign: 'left' }}>
+                  <th style={{ padding: '12px 16px' }}>Timestamp (UTC)</th>
+                  <th style={{ padding: '12px 16px' }}>Action</th>
+                  <th style={{ padding: '12px 16px' }}>Actor</th>
+                  <th style={{ padding: '12px 16px' }}>Entity Type</th>
+                  <th style={{ padding: '12px 16px' }}>Change Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {auditLogs.map((log) => (
+                  <tr key={log.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '10px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem' }}>
+                      {new Date(log.createdAt).toLocaleTimeString()}
+                    </td>
+                    <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--brand-light)' }}>
+                      {log.action}
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      {log.actor?.name || 'System / Automated'} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({log.actor?.role || 'SYSTEM'})</span>
+                    </td>
+                    <td style={{ padding: '10px 16px', color: 'var(--text-secondary)' }}>
+                      {log.entityType}
+                    </td>
+                    <td style={{ padding: '10px 16px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                      {log.changeSummary ? JSON.stringify(log.changeSummary) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* AI Situation Briefing Modal */}
+      {aiBriefModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, padding: '20px',
+        }}>
+          <div className="card card-elevated" style={{ width: '100%', maxWidth: '620px', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--brand-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                ✨ AI Situation Briefing #{aiBriefModal.incident?.id.slice(-6).toUpperCase()}
+              </h3>
+              <button onClick={() => setAiBriefModal(null)} style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', padding: '4px' }}>
+                ×
+              </button>
+            </div>
+
+            {aiBriefLoading || !aiBriefModal.summary ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                Synthesizing audit events and incident records...
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Verified Facts */}
+                <div style={{
+                  backgroundColor: 'var(--bg-app)',
+                  padding: '14px',
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: '3px solid var(--color-success)',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-success)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    ✅ Verified Facts
+                  </div>
+                  <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                    {aiBriefModal.summary.verifiedFacts.map((fact, idx) => (
+                      <li key={idx}>{fact}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Unresolved Questions */}
+                <div style={{
+                  backgroundColor: 'var(--bg-app)',
+                  padding: '14px',
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: '3px solid var(--color-critical)',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-critical)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    ❓ Unresolved Questions & Risks
+                  </div>
+                  <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                    {aiBriefModal.summary.unresolvedQuestions.map((q, idx) => (
+                      <li key={idx}>{q}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Recommended Next Actions */}
+                <div style={{
+                  backgroundColor: 'var(--bg-app)',
+                  padding: '14px',
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: '3px solid var(--brand-light)',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--brand-light)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    ⚡ Recommended Next Operator Actions
+                  </div>
+                  <ul style={{ paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                    {aiBriefModal.summary.recommendedActions.map((act, idx) => (
+                      <li key={idx}>{act}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Disclaimer */}
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                  ⚠️ {aiBriefModal.summary.disclaimer}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setAiBriefModal(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Public Report Modal */}
+      {reviewReportModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 200, padding: '20px',
+        }}>
+          <div className="card card-elevated" style={{ width: '100%', maxWidth: '480px' }}>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: reviewAction === 'ESCALATE' ? 'var(--color-critical)' : 'var(--text-secondary)' }}>
+              {reviewAction === 'ESCALATE' ? '⚡ Verify & Escalate Report' : 'Dismiss Public Report'}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              Ref: <strong>{reviewReportModal.reference}</strong> ({reviewReportModal.category}) at {reviewReportModal.location}
+            </p>
+
+            <div className="form-group">
+              <label className="form-label">Review Assessment Note</label>
+              <textarea
+                className="form-textarea"
+                rows="3"
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                placeholder={reviewAction === 'ESCALATE' ? 'Confirmed hazard verified on security camera...' : 'Duplicate report; already dispatched...'}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button className="btn btn-secondary" onClick={() => setReviewReportModal(null)}>Cancel</button>
+              <button
+                className={`btn ${reviewAction === 'ESCALATE' ? 'btn-critical' : 'btn-secondary'}`}
+                onClick={submitReportReview}
+                disabled={reviewLoading || !reviewNote.trim()}
+              >
+                {reviewLoading ? 'Processing...' : reviewAction === 'ESCALATE' ? 'Confirm Escalation' : 'Confirm Dismissal'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
