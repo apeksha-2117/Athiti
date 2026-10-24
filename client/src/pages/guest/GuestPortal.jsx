@@ -550,7 +550,7 @@ export function GuestPortal() {
             </button>
 
             <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 16px auto', lineHeight: 1.5 }}>
-              Instant proximity dispatch: selects closest on-duty responder in 0s with room coordinates & severity weighting.
+              Tap for immediate emergency assistance.
             </p>
 
             <button
@@ -1146,7 +1146,7 @@ export function GuestPortal() {
             </div>
 
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.45 }}>
-              Proximity dispatch algorithm routes directly to nearest qualified responder. Auto-dispatches <strong>CRITICAL</strong> in {severityCountdown}s.
+              Select severity level, or auto-dispatch will activate in {severityCountdown}s.
             </p>
 
             {/* 3 Severity Cards */}
@@ -1272,16 +1272,16 @@ export function GuestPortal() {
               <MapPinIcon size={24} color="var(--brand-light)" />
               <div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                  Live Location Handshake
+                  Confirm Your Location
                 </h3>
                 <span style={{ fontSize: '0.74rem', color: 'var(--brand-light)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Mandatory Check-in Safety Protocol
+                  Safety Check-in
                 </span>
               </div>
             </div>
 
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.45 }}>
-              Welcome to Grand Athithi Hotel, <strong>{user?.name}</strong>. SafeStay uses dynamic proximity dispatch to send the closest on-duty responder to you in under 60 seconds. Confirm your current physical presence to activate protection.
+              Welcome to Grand Athithi Hotel, <strong>{user?.name}</strong>. Please confirm your current location to activate rapid emergency assistance.
             </p>
 
             {/* Options */}

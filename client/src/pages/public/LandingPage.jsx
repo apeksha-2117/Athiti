@@ -104,7 +104,7 @@ export function LandingPage() {
             2D Architectural Blueprint
           </h2>
           <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-            Scalable multi-floor SVG CAD floor plan with live radar pulse markers, room booking inspection, and an unlocated report staging shelf.
+            Multi-floor architectural blueprint with live radar markers, room inspection, and responder tracking.
           </p>
         </div>
 
@@ -123,10 +123,10 @@ export function LandingPage() {
             <RadioIcon size={20} />
           </div>
           <h2 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
-            Sub-Second Dispatch Dispatch
+            Sub-Second Proximity Dispatch
           </h2>
           <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-            Dual-auth token architecture over Socket.IO delivering zero-latency updates to on-duty security, facilities, and housekeeping staff.
+            Real-time updates delivered instantly to on-duty security, facilities, and housekeeping staff.
           </p>
         </div>
       </div>
@@ -139,15 +139,11 @@ export function LandingPage() {
         border: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px',
+        justifyContent: 'center',
+        textAlign: 'center',
       }}>
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Grand Athithi Hotel • Internal Safety & Facilities Command System
-        </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-          STANDARDS COMPLIANCE: UN SDG 11
+          Grand Athithi Hotel • Safety & Facilities Command System
         </div>
       </div>
     </div>

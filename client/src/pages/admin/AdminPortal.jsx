@@ -682,10 +682,7 @@ export function AdminPortal() {
       {/* VIEW 2: HOTEL FLOOR PLAN & ROOMS */}
       {activeTab === 'ROOMS' && (
         <div>
-          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Interactive architectural 2D blueprint with live hazard markers, occupancy tracking, and room inspection.
-            </p>
+          <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
                 className={`btn btn-sm ${floorplanViewMode === 'BLUEPRINT' ? 'btn-primary' : 'btn-secondary'}`}
@@ -919,12 +916,9 @@ export function AdminPortal() {
       {/* VIEW 4: PUBLIC REPORTS TRIAGE */}
       {activeTab === 'PUBLIC_REPORTS' && (
         <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>
-            Public Hazard Reports Triage Queue ({publicReports.length})
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '14px' }}>
+            Public Hazard Reports ({publicReports.length})
           </h2>
-          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Review external hazard reports submitted by visitors and bystanders. Escalate to active incident or dismiss.
-          </p>
 
           {publicReports.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
@@ -1009,12 +1003,9 @@ export function AdminPortal() {
       {/* VIEW 5: AUDIT LOGS & CHAIN OF CUSTODY */}
       {activeTab === 'AUDIT_LOGS' && (
         <div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>
-            System Audit Trail & Chain of Custody ({auditLogs.length})
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '14px' }}>
+            System Audit Trail ({auditLogs.length})
           </h2>
-          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-            Authoritative, immutable event timeline of all triggers, assignments, acknowledgements, and closures.
-          </p>
 
           <div className="card card-elevated" style={{ padding: '0', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -1132,11 +1123,6 @@ export function AdminPortal() {
                     ))}
                   </ul>
                 </div>
-
-                {/* Disclaimer */}
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
-                  <strong>Disclaimer:</strong> {aiBriefModal.summary.disclaimer}
-                </div>
               </div>
             )}
 
@@ -1216,7 +1202,7 @@ export function AdminPortal() {
               <div>Floor: <strong>Floor {selectedRoom.floor}</strong></div>
               <div>Type: <strong>{selectedRoom.roomType}</strong></div>
               <div>Status: <strong>{selectedRoom.operationalStatus}</strong></div>
-              <div>Presence: <em style={{ color: 'var(--text-muted)' }}>Unknown (Per PRD FR-029)</em></div>
+              <div>Presence: <span style={{ color: 'var(--text-muted)' }}>Unverified</span></div>
             </div>
 
             {selectedRoom.stays && selectedRoom.stays[0] ? (

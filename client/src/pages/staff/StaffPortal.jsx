@@ -401,7 +401,7 @@ export function StaffPortal() {
               Decline Assignment
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Please provide an operational reason (e.g. handling active medical call elsewhere).
+              Please state the reason for declining.
             </p>
             <div className="form-group">
               <label className="form-label">Reason</label>
@@ -438,12 +438,9 @@ export function StaffPortal() {
           backdropFilter: 'blur(4px)',
         }}>
           <div className="card card-elevated modal-mobile-fit" style={{ width: '100%', maxWidth: '440px', maxHeight: '88vh', overflowY: 'auto' }}>
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '14px', color: 'var(--brand-light)' }}>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '16px', color: 'var(--brand-light)' }}>
               Update Task Status
             </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Select target response phase and optional notes.
-            </p>
             <div className="form-group">
               <label className="form-label">Progress Note</label>
               <textarea

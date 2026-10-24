@@ -911,11 +911,6 @@ export function HotelFloorPlan({
                     Floor {selectedEntity.data.floor} • {selectedEntity.data.roomType} Suite
                   </div>
 
-                  {/* Physical Presence Safety Callout (PRD FR-029) */}
-                  <div className="presence-callout">
-                    <strong>Physical Presence Disclaimer:</strong> Booking occupancy is distinct from verified physical presence. Do not assume room is occupied without on-scene confirmation.
-                  </div>
-
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.82rem', marginBottom: '14px' }}>
                     <div style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '4px' }}>
                       <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>STATUS</span>
@@ -1230,38 +1225,23 @@ export function HotelFloorPlan({
               )}
             </div>
           ) : (
-            <div className="inspector-card" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px', color: 'var(--text-muted)' }}>
-                <MapPinIcon size={28} />
-              </div>
-              <strong style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '4px', fontSize: '0.88rem' }}>
-                Interactive Blueprint Inspector
-              </strong>
-              <p style={{ fontSize: '0.80rem', lineHeight: 1.45 }}>
-                Select any room boundary or active emergency marker on the architectural floor plan to inspect physical presence status, guest records, and dispatch timelines.
-              </p>
+            <div className="inspector-card" style={{ textAlign: 'center', padding: '24px 14px', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '0.80rem', color: 'var(--text-muted)' }}>
+                Select a room or marker to view details
+              </span>
             </div>
           )}
 
-          {/* ── Unlocated Reports Shelf (PRD & Constraint Req) ── */}
-          <div className="unlocated-shelf">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.80rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '0.04em' }}>
-                <AlertTriangleIcon size={14} color="#fbbf24" />
-                <span>UNLOCATED STAGING QUEUE ({unlocatedReports.length})</span>
-              </span>
-              <span style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>No Room Assigned</span>
-            </div>
-
-            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: 1.3 }}>
-              Public hazard reports and general incidents without a mapped room location are monitored here and never placed arbitrarily on the blueprint.
-            </p>
-
-            {unlocatedReports.length === 0 ? (
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px' }}>
-                No unlocated reports pending
+          {/* ── Unassigned Reports Shelf (only shown when reports exist) ── */}
+          {unlocatedReports.length > 0 && (
+            <div className="unlocated-shelf">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangleIcon size={14} color="#fbbf24" />
+                  <span>Unassigned Reports ({unlocatedReports.length})</span>
+                </span>
               </div>
-            ) : (
+
               <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                 {unlocatedReports.map((rpt) => (
                   <div
@@ -1299,8 +1279,8 @@ export function HotelFloorPlan({
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

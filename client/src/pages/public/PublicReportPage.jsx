@@ -55,7 +55,7 @@ export function PublicReportPage() {
             Report Incident or Physical Threat
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: '4px' }}>
-            For hotel visitors, bystanders, or staff off-shift. Transmits directly to the Grand Athithi Hotel command operations console.
+            Submit a hazard report directly to hotel security and operations.
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export function PublicReportPage() {
               color: 'var(--text-muted)',
               marginBottom: '20px',
             }}>
-              <strong>Immediate Peril:</strong> If life or physical safety is in immediate catastrophic peril, also dial local emergency dispatch (112 / 911) directly.
+              <strong>Emergency:</strong> In an immediate life-threatening emergency, please also call emergency services (112 / 911).
             </div>
 
             <button
